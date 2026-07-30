@@ -28,6 +28,27 @@ npm run dev
 # open http://localhost:3000 → redirects to /alumni-insights
 ```
 
+## Regenerate synthetic data
+
+Data files under `data/` are gitignored. Regenerate them with:
+
+```bash
+npm run generate-data
+# → writes data/alumni.json, prospects.json, courses.json, employers.json,
+#   signals.json, propensity.json, cohorts.json, bundle.json, meta.json
+```
+
+Change the seed with `SEED=99 npm run generate-data`. Use `SMALL=1` for a
+~60-alumni bundle for quick smoke tests. Full run: 2,000 alumni, 500 prospects,
+~16k signals, 300k propensity rows (~98 MB total).
+
+## Test
+
+```bash
+npm test          # single run
+npm run test:watch
+```
+
 ## Stack
 
 - Next.js 16 (App Router, standalone output, Turbopack)
