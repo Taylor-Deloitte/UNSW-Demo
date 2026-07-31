@@ -10,8 +10,10 @@ import {
   DEFAULT_COHORTS_QUERY,
   cohortFinding,
   type CohortKey,
+  type CohortRow,
   type CohortsQuery,
 } from '../../lib/tab-data/cohorts-fixture';
+import { openPayloadTab } from '../../lib/handoff/open-payload';
 
 const CHIPS = [{ name: 'query_ajo' }, { name: 'compare_cohorts' }];
 
@@ -50,7 +52,7 @@ export default function CohortsPage() {
         />
       </QueryBand>
 
-      <HeadlineRow a={a} b={b} windowLabel={windowLabel} />
+      <HeadlineRow a={a} b={b} windowLabel={windowLabel} q={q} />
 
       <div className="flex flex-1" style={{ minHeight: 0 }}>
         <ChartColumn a={a} b={b} />
@@ -66,12 +68,19 @@ function HeadlineRow({
   a,
   b,
   windowLabel,
+  q,
 }: {
-  a: { label: string; engagement: number; deltaQ1: number; size: number };
-  b: { label: string; size: number };
+  a: CohortRow;
+  b: CohortRow;
   windowLabel: string;
+  q: CohortsQuery;
 }) {
   const trend = a.deltaQ1 < 0 ? `down ${Math.abs(a.deltaQ1)}%` : `up ${a.deltaQ1}%`;
+  const openAbTest = () =>
+    openPayloadTab(`AJO A/B test · ${a.label}`, buildAbTestPayload(a, b, q));
+  const openRevert = () =>
+    openPayloadTab(`AJO cadence revert · ${a.label}`, buildRevertPayload(a, q));
+
   return (
     <div
       className="flex flex-none items-end justify-between"
@@ -91,6 +100,7 @@ function HeadlineRow({
       <div className="flex" style={{ gap: 10 }}>
         <button
           type="button"
+          onClick={openAbTest}
           className="bg-unsw-yellow text-ink"
           style={{ fontSize: 14, fontWeight: 700, padding: '10px 18px' }}
         >
@@ -98,6 +108,7 @@ function HeadlineRow({
         </button>
         <button
           type="button"
+          onClick={openRevert}
           className="bg-paper text-ink transition-colors hover:bg-ink hover:text-paper"
           style={{ border: '2px solid #000', fontSize: 14, fontWeight: 500, padding: '8px 16px' }}
         >
@@ -106,6 +117,61 @@ function HeadlineRow({
       </div>
     </div>
   );
+}
+
+function buildAbTestPayload(a: CohortRow, b: CohortRow, q: CohortsQuery) {
+  return {
+    endpoint: 'https://platform.adobe.io/journey/authoring/experiments',
+    method: 'POST',
+    headers: {
+      Authorization: '<bearer token from Adobe IMS>',
+      'x-api-key': '<AJO API key>',
+      'x-sandbox-name': 'unsw-marketing-prod',
+      'Content-Type': 'application/json',
+    },
+    body: {
+      name: `${a.label} · cadence A/B`,
+      hypothesis: `Reverting the cadence template for ${a.label} recovers engagement lost after 12 June — target: return to ${b.engagement}%+ within 60 days.`,
+      variant_a: { label: 'Control (current template)', trafficShare: 0.5 },
+      variant_b: { label: 'Reverted template (pre-12-June)', trafficShare: 0.5 },
+      audience: { cohort: a.label, size: a.size },
+      referenceCohort: { cohort: b.label, size: b.size, engagement: b.engagement },
+      metricPrimary: 'engagement_rate_30d',
+      metricSecondary: ['click_through_rate', 'unsubscribe_rate'],
+      window: q.window,
+      metadata: {
+        createdBy: 'Marketing Intelligence agent · MI 0.1',
+        governedByPolicy: 'UNSW policy v1.2',
+        source: 'cohorts',
+      },
+    },
+  };
+}
+
+function buildRevertPayload(a: CohortRow, q: CohortsQuery) {
+  return {
+    endpoint: 'https://platform.adobe.io/journey/authoring/campaigns/{id}/actions/revert-template',
+    method: 'POST',
+    headers: {
+      Authorization: '<bearer token from Adobe IMS>',
+      'x-api-key': '<AJO API key>',
+      'x-sandbox-name': 'unsw-marketing-prod',
+      'Content-Type': 'application/json',
+    },
+    body: {
+      cohort: a.label,
+      cohortSize: a.size,
+      revertToVersion: 'pre-2026-06-12',
+      reason: `Engagement dropped ${Math.abs(a.deltaQ1)}% after 12 June cadence change. Reverting for ${a.label}.`,
+      applyTo: 'active_journeys',
+      window: q.window,
+      metadata: {
+        createdBy: 'Marketing Intelligence agent · MI 0.1',
+        governedByPolicy: 'UNSW policy v1.2',
+        source: 'cohorts',
+      },
+    },
+  };
 }
 
 function ChartColumn({

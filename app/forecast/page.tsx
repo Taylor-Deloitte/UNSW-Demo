@@ -5,6 +5,11 @@ import { QueryBand, QueryStatic, QueryToken } from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import { computeForecast } from '../../lib/tab-data/forecast';
 import { paybackMonth } from '../../lib/tab-data/forecast-payback';
+import { openPayloadTab } from '../../lib/handoff/open-payload';
+import {
+  buildAjoCampaignFromForecast,
+  buildForecastBriefPayload,
+} from '../../lib/handoff/payloads';
 
 const CHIPS = [{ name: 'simulate_forecast' }];
 
@@ -137,6 +142,38 @@ export default function ForecastPage() {
           current={q}
           onApply={(patch) => setQ({ ...q, ...patch })}
           assumptions={result.assumptions}
+          onExportBrief={() =>
+            openPayloadTab(
+              `Campaign brief · ${segment.label}`,
+              buildForecastBriefPayload({
+                segmentLabel: segment.label,
+                segmentSize: segment.size,
+                upliftPct,
+                courseValueAud,
+                campaignCostAud,
+                projectedRevenueAud: result.incrementalRevenueAud,
+                projectedEnrolments: result.incrementalConversions,
+                roi: result.roi,
+                paybackMonth: payback,
+              }),
+            )
+          }
+          onDraftAjoCampaign={() =>
+            openPayloadTab(
+              `AJO campaign · ${segment.label}`,
+              buildAjoCampaignFromForecast({
+                segmentLabel: segment.label,
+                segmentSize: segment.size,
+                upliftPct,
+                courseValueAud,
+                campaignCostAud,
+                projectedRevenueAud: result.incrementalRevenueAud,
+                projectedEnrolments: result.incrementalConversions,
+                roi: result.roi,
+                paybackMonth: payback,
+              }),
+            )
+          }
         />
       </div>
 
@@ -301,10 +338,14 @@ function ScenarioColumn({
   current,
   onApply,
   assumptions,
+  onExportBrief,
+  onDraftAjoCampaign,
 }: {
   current: FcQuery;
   onApply: (patch: Partial<FcQuery>) => void;
   assumptions: string[];
+  onExportBrief: () => void;
+  onDraftAjoCampaign: () => void;
 }) {
   return (
     <div
@@ -367,6 +408,7 @@ function ScenarioColumn({
       <div className="flex flex-col" style={{ marginTop: 'auto' }}>
         <button
           type="button"
+          onClick={onExportBrief}
           className="w-full bg-unsw-yellow text-ink"
           style={{ fontSize: 15, fontWeight: 700, padding: '13px 22px', textAlign: 'center' }}
         >
@@ -374,6 +416,7 @@ function ScenarioColumn({
         </button>
         <button
           type="button"
+          onClick={onDraftAjoCampaign}
           className="mt-3 w-full bg-paper text-ink transition-colors hover:bg-ink hover:text-paper"
           style={{ border: '2px solid #000', fontSize: 14, fontWeight: 500, padding: '11px 20px' }}
         >

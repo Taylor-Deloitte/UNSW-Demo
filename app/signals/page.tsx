@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { QueryBand, QueryStatic, QueryToken, AddConditionStub } from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import {
@@ -12,6 +12,7 @@ import {
   type SignalsQuery,
 } from '../../lib/tab-data/signals-fixture';
 import { SEGMENTS_SAMPLE, type SegmentSampleRow } from '../../lib/tab-data/segments-sample';
+import { useServerTool } from '../../hooks/useServerTool';
 
 const CHIPS = [
   { name: 'query_aep' },
@@ -21,9 +22,34 @@ const CHIPS = [
 
 export default function SignalsPage() {
   const [q, setQ] = useState<SignalsQuery>(DEFAULT_SIGNALS_QUERY);
+  const { call } = useServerTool();
 
   const { momentsTotal, momentsUnactioned } = deriveSignalCounts(q);
   const rows = useMemo(() => filterAndRank(q), [q]);
+
+  // Background tool calls on token change — feeds the audit log.
+  useEffect(() => {
+    const signalType =
+      q.scope === 'promoted'
+        ? 'promoted'
+        : q.scope === 'role-change'
+          ? 'role_change'
+          : q.scope === 'redundancy'
+            ? 'redundancy_risk'
+            : 'promoted';
+    const withinDays = q.window === '7d' ? 7 : q.window === '30d' ? 30 : 90;
+    void call('query_linkedin', {
+      mode: 'by_signal_type',
+      signalType,
+      withinDays,
+      limit: 20,
+    }).catch(() => {});
+    void call('query_dynamics', {
+      entity: 'prospects',
+      filters: {},
+      limit: 20,
+    }).catch(() => {});
+  }, [q, call]);
 
   return (
     <div className="flex flex-1 flex-col" style={{ minHeight: 0 }}>

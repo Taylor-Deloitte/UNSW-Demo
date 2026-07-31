@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { QueryBand, QueryStatic, QueryToken, AddConditionStub } from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import {
@@ -10,6 +10,9 @@ import {
   type SegmentsQuery,
 } from '../../lib/tab-data/segments-fixture';
 import { SEGMENTS_SAMPLE, type SegmentSampleRow } from '../../lib/tab-data/segments-sample';
+import { useServerTool } from '../../hooks/useServerTool';
+import { openPayloadTab } from '../../lib/handoff/open-payload';
+import { buildAepPayload, buildAjoPayload } from '../../lib/handoff/payloads';
 
 const CHIPS = [
   { name: 'query_dynamics' },
@@ -20,6 +23,7 @@ const CHIPS = [
 
 export default function SegmentsPage() {
   const [q, setQ] = useState<SegmentsQuery>(DEFAULT_SEGMENTS_QUERY);
+  const { call } = useServerTool();
 
   const count = matchCount(q);
   const rows = useMemo(() => filterSample(q), [q]);
@@ -28,6 +32,35 @@ export default function SegmentsPage() {
   const remaining = Math.max(0, count - rows.length);
   const medianPropensity =
     rows.length > 0 ? rows[Math.floor(rows.length / 2)].score : 0;
+
+  // Fire real MCP tool calls in the background on token change.
+  // Populates the audit log so the agent activity is visible; on-screen
+  // numbers stay fixture-driven per the demo narrative.
+  useEffect(() => {
+    const criteria = mapQueryToAepCriteria(q);
+    void call('query_aep', {
+      audienceCriteria: criteria,
+      limit: 20,
+    }).catch(() => {});
+    void call('run_propensity_model', {
+      courseIdOrName: 'AI for Leaders',
+      topN: 10,
+    }).catch(() => {});
+  }, [q, call]);
+
+  const onSaveToAep = () => {
+    openPayloadTab(
+      `AEP segment · ${label('study', q.study)} · ${label('signal', q.signal)}`,
+      buildAepPayload({ source: 'segments', query: q, audienceSize: count, rows }),
+    );
+  };
+
+  const onDraftAjo = () => {
+    openPayloadTab(
+      `AJO campaign · ${label('study', q.study)} · ${label('signal', q.signal)}`,
+      buildAjoPayload({ source: 'segments', query: q, audienceSize: count, rows }),
+    );
+  };
 
   return (
     <div className="flex flex-1 flex-col" style={{ minHeight: 0 }}>
@@ -69,7 +102,12 @@ export default function SegmentsPage() {
         <AddConditionStub />
       </QueryBand>
 
-      <ResultHeader count={count} emailConsentCount={emailConsentCount} />
+      <ResultHeader
+        count={count}
+        emailConsentCount={emailConsentCount}
+        onSaveToAep={onSaveToAep}
+        onDraftAjo={onDraftAjo}
+      />
 
       <ResultTable rows={rows} remaining={remaining} medianPropensity={medianPropensity} />
 
@@ -83,11 +121,31 @@ export default function SegmentsPage() {
   );
 }
 
+function label<K extends keyof typeof SEGMENTS_TOKEN_OPTIONS>(key: K, value: string): string {
+  return SEGMENTS_TOKEN_OPTIONS[key].find((o) => o.value === value)?.label ?? value;
+}
+
+function mapQueryToAepCriteria(q: SegmentsQuery) {
+  const industries =
+    q.study === 'cs'
+      ? ['Technology']
+      : q.study === 'eng'
+        ? ['Technology', 'Manufacturing', 'Energy']
+        : q.study === 'commerce'
+          ? ['Financial Services', 'Consulting', 'Retail']
+          : undefined;
+  const states =
+    q.loc === 'outside-sydney'
+      ? ['VIC', 'QLD', 'WA', 'SA', 'ACT', 'TAS', 'NT']
+      : q.loc === 'regional-nsw'
+        ? ['NSW']
+        : undefined;
+  return { industries, states, hasRecentSignal: true };
+}
+
 function filterSample(q: SegmentsQuery): SegmentSampleRow[] {
   return SEGMENTS_SAMPLE.filter((row) => {
-    // study
     if (q.study !== 'any' && row.study !== q.study) return false;
-    // signal
     if (q.signal !== 'any') {
       const need =
         q.signal === 'promoted'
@@ -97,10 +155,8 @@ function filterSample(q: SegmentsQuery): SegmentSampleRow[] {
             : 'redundancy';
       if (!row.signals.includes(need as SegmentSampleRow['signals'][number])) return false;
     }
-    // location
     if (q.loc === 'outside-sydney' && row.sydneyMetro) return false;
     if (q.loc === 'regional-nsw' && !(row.state === 'NSW' && !row.sydneyMetro)) return false;
-    // gap
     const now = new Date();
     const lastCourseYear = Number(row.lastCourse.split(' ')[1]);
     const yearsSince = now.getFullYear() - lastCourseYear;
@@ -113,9 +169,13 @@ function filterSample(q: SegmentsQuery): SegmentSampleRow[] {
 function ResultHeader({
   count,
   emailConsentCount,
+  onSaveToAep,
+  onDraftAjo,
 }: {
   count: number;
   emailConsentCount: number;
+  onSaveToAep: () => void;
+  onDraftAjo: () => void;
 }) {
   return (
     <div
@@ -135,8 +195,8 @@ function ResultHeader({
         </div>
       </div>
       <div className="flex" style={{ gap: 10 }}>
-        <OutlineButton>Draft AJO campaign</OutlineButton>
-        <OutlineButton>Find lookalikes</OutlineButton>
+        <OutlineButton onClick={onSaveToAep}>Save to AEP</OutlineButton>
+        <OutlineButton onClick={onDraftAjo}>Draft AJO campaign</OutlineButton>
         <OutlineButton href="/forecast">Forecast this segment</OutlineButton>
       </div>
     </div>
@@ -146,9 +206,11 @@ function ResultHeader({
 function OutlineButton({
   children,
   href,
+  onClick,
 }: {
   children: React.ReactNode;
   href?: string;
+  onClick?: () => void;
 }) {
   const cls =
     'cursor-pointer bg-paper text-ink transition-colors hover:bg-ink hover:text-paper';
@@ -166,7 +228,7 @@ function OutlineButton({
     );
   }
   return (
-    <button type="button" className={cls} style={style}>
+    <button type="button" onClick={onClick} className={cls} style={style}>
       {children}
     </button>
   );

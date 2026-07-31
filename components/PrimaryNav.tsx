@@ -2,18 +2,24 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { brand, tabs } from '../lib/brand';
+import { getEntries, subscribe } from '../lib/agent/audit-log';
 
-export function PrimaryNav() {
+export function PrimaryNav({ onToggleAudit }: { onToggleAudit: () => void }) {
   const pathname = usePathname();
+  const [auditCount, setAuditCount] = useState(getEntries().length);
+
+  useEffect(() => {
+    return subscribe((e) => setAuditCount(e.length));
+  }, []);
 
   return (
     <nav
-      className="flex flex-none items-center justify-between bg-paper"
+      className="sticky top-0 z-40 flex flex-none items-center justify-between bg-paper"
       style={{ height: 70, padding: '0 36px', borderBottom: '1px solid #e0e0e0' }}
     >
       <div className="flex items-center" style={{ gap: 26 }}>
-        {/* Wordmark — hot-linked from UNSW CDN per handoff. Replace with local asset later. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={brand.wordmark} alt="UNSW" style={{ height: 36, width: 'auto' }} />
         <div className="flex items-center" style={{ gap: 24, fontSize: 15 }}>
@@ -41,16 +47,30 @@ export function PrimaryNav() {
         </div>
       </div>
       <div className="flex items-center" style={{ gap: 16 }}>
-        <span style={{ fontSize: 14, color: '#55565a' }}>
-          Marketing Manager · Alumni Engagement
+        <span className="text-muted" style={{ fontSize: 12 }}>
+          Governed by UNSW policy v1.2
         </span>
         <button
           type="button"
+          onClick={onToggleAudit}
+          className="text-muted"
+          style={{ fontSize: 12, borderBottom: '1px solid #8f9296' }}
+        >
+          Audit log ({auditCount})
+        </button>
+        <span className="text-muted" style={{ fontSize: 12 }}>
+          Marketing Manager · Alumni Engagement
+        </span>
+        <span className="text-muted" style={{ fontSize: 12 }}>
+          Demo · synthetic
+        </span>
+        <Link
+          href="/segments"
           className="bg-unsw-yellow text-ink transition-colors hover:bg-ink hover:text-unsw-yellow"
-          style={{ fontSize: 15, fontWeight: 700, padding: '11px 22px' }}
+          style={{ fontSize: 14, fontWeight: 700, padding: '9px 18px' }}
         >
           Save to AEP
-        </button>
+        </Link>
       </div>
     </nav>
   );
