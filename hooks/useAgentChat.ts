@@ -3,16 +3,19 @@
 import { useCallback, useRef, useState } from 'react';
 import type { AgentEvent } from '../lib/agent/events';
 
+export interface ToolCall {
+  tool: string;
+  input: unknown;
+  toolUseId?: string;
+  status: 'running' | 'done';
+  output?: unknown;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'agent';
   text: string;
-  toolCalls: Array<{
-    tool: string;
-    input: unknown;
-    toolUseId?: string;
-    status: 'running' | 'done';
-  }>;
+  toolCalls: ToolCall[];
 }
 
 export function useAgentChat() {
@@ -123,7 +126,9 @@ function applyEvent(
           ? {
               ...msg,
               toolCalls: msg.toolCalls.map((tc) =>
-                tc.toolUseId === ev.toolUseId ? { ...tc, status: 'done' } : tc,
+                tc.toolUseId === ev.toolUseId
+                  ? { ...tc, status: 'done', output: extractOutput(ev.output) }
+                  : tc,
               ),
             }
           : msg,
@@ -138,4 +143,30 @@ function applyEvent(
       ),
     );
   }
+}
+
+/** Tool results arrive as `[{type:'text', text:'<json>'}]` or similar SDK envelopes. Try to parse text->JSON. */
+function extractOutput(raw: unknown): unknown {
+  if (!raw) return raw;
+  if (Array.isArray(raw)) {
+    const first = raw[0];
+    if (first && typeof first === 'object' && 'text' in first) {
+      const text = (first as { text: unknown }).text;
+      if (typeof text === 'string') {
+        try {
+          return JSON.parse(text);
+        } catch {
+          return text;
+        }
+      }
+    }
+  }
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  }
+  return raw;
 }
