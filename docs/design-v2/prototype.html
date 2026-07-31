@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#fff; font-family:Roboto, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#000; }
+  a:hover { color:#55565a; }
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#fff;color:#000;font-family:Roboto,system-ui,sans-serif">
+
+  <div style="height:34px;flex:none;background:#000;display:flex;align-items:center;justify-content:space-between;padding:0 36px;font-size:12px;color:rgba(255,255,255,0.8)">
+    <span>Marketing Intelligence · Alumni Engagement</span>
+    <span style="display:flex;align-items:center;gap:20px">
+      <span style="color:#FFD100">Governed by UNSW policy v1.2</span>
+      <span onClick="{{ toggleAudit }}" style="cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.4)">Audit log ({{ auditCount }})</span>
+      <span>Demo · synthetic data</span>
+    </span>
+  </div>
+
+  <div style="height:70px;flex:none;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;padding:0 36px">
+    <div style="display:flex;align-items:center;gap:26px">
+      <img src="https://www.unsw.edu.au/content/dam/images/graphics/logos/unsw/unsw_0.png" alt="UNSW" style="height:36px;width:auto;display:block">
+      <div style="display:flex;gap:24px;font-size:15px;font-weight:500">
+        <sc-if value="{{ isSignals }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goSignals }}" style="cursor:pointer;font-weight:700;border-bottom:3px solid #FFD100;padding-bottom:18px;margin-bottom:-21px">Signals</span></sc-if>
+        <sc-if value="{{ notSignals }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goSignals }}" style="cursor:pointer;color:#55565a">Signals</span></sc-if>
+        <sc-if value="{{ isCohorts }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goCohorts }}" style="cursor:pointer;font-weight:700;border-bottom:3px solid #FFD100;padding-bottom:18px;margin-bottom:-21px">Cohorts</span></sc-if>
+        <sc-if value="{{ notCohorts }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goCohorts }}" style="cursor:pointer;color:#55565a">Cohorts</span></sc-if>
+        <sc-if value="{{ isSegments }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goSegments }}" style="cursor:pointer;font-weight:700;border-bottom:3px solid #FFD100;padding-bottom:18px;margin-bottom:-21px">Segments</span></sc-if>
+        <sc-if value="{{ notSegments }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goSegments }}" style="cursor:pointer;color:#55565a">Segments</span></sc-if>
+        <sc-if value="{{ isForecast }}" hint-placeholder-val="{{ false }}"><span onClick="{{ goForecast }}" style="cursor:pointer;font-weight:700;border-bottom:3px solid #FFD100;padding-bottom:18px;margin-bottom:-21px">Forecast</span></sc-if>
+        <sc-if value="{{ notForecast }}" hint-placeholder-val="{{ true }}"><span onClick="{{ goForecast }}" style="cursor:pointer;color:#55565a">Forecast</span></sc-if>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span style="font-size:14px;color:#55565a">Marketing Manager · Alumni Engagement</span>
+      <span style="background:#FFD100;color:#000;font-size:15px;font-weight:700;padding:11px 22px;cursor:pointer" style-hover="background:#000;color:#FFD100">Save to AEP</span>
+    </div>
+  </div>
+
+  <sc-if value="{{ isSignals }}" hint-placeholder-val="{{ true }}">
+  <div data-screen-label="01 Signals" style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <div style="flex:none;background:#f4f4f4;border-bottom:1px solid #e0e0e0;padding:24px 36px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#55565a">Your query · click any part to change it</div>
+      <div style="margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:22px;line-height:1.5">
+        <span style="color:#55565a">Show</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openFeedScope }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ feedScope }}</span><span> ▾</span></span>
+          <sc-if value="{{ feedScopeOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:250px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="4"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">from the last</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openFeedWindow }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ feedWindow }}</span><span> ▾</span></span>
+          <sc-if value="{{ feedWindowOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:200px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="3"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">, ranked by</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openFeedRank }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ feedRank }}</span><span> ▾</span></span>
+          <sc-if value="{{ feedRankOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:230px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="3"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="border:1.5px dashed #8f9296;color:#8f9296;padding:4px 12px;font-size:18px;cursor:pointer" style-hover="border-color:#000;color:#000">+ add a condition</span>
+      </div>
+    </div>
+    <div style="flex:none;display:flex;border-bottom:1px solid #000">
+      <div style="flex:1;padding:18px 36px"><div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a">Moments detected</div><div style="font-size:32px;font-weight:700;letter-spacing:-0.025em">{{ momentsTotal }}</div></div>
+      <div style="flex:1;padding:18px 12px;border-left:1px solid #e0e0e0"><div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a">Unactioned</div><div style="font-size:32px;font-weight:700;letter-spacing:-0.025em">{{ momentsUnactioned }}</div></div>
+      <div style="flex:1;padding:18px 12px;border-left:1px solid #e0e0e0"><div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a">Promoted</div><div style="font-size:32px;font-weight:700;letter-spacing:-0.025em">418</div></div>
+      <div style="flex:1;padding:18px 12px;border-left:1px solid #e0e0e0"><div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a">Role change</div><div style="font-size:32px;font-weight:700;letter-spacing:-0.025em">327</div></div>
+      <div style="flex:1;padding:18px 12px;border-left:1px solid #e0e0e0"><div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a">Course gap 3y+</div><div style="font-size:32px;font-weight:700;letter-spacing:-0.025em">256</div></div>
+      <div style="flex:1;padding:18px 36px 18px 12px;border-left:1px solid #e0e0e0"><div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a">Redundancy risk</div><div style="font-size:32px;font-weight:700;letter-spacing:-0.025em">112</div></div>
+    </div>
+    <div style="flex:1;min-height:0">
+      <table style="width:100%;border-collapse:collapse;font-size:14px;text-align:left">
+        <thead>
+          <tr style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a;border-bottom:1px solid #e0e0e0">
+            <th style="padding:11px 36px;font-weight:700">When</th>
+            <th style="padding:11px 12px;font-weight:700">Alumnus</th>
+            <th style="padding:11px 12px;font-weight:700">What happened</th>
+            <th style="padding:11px 12px;font-weight:700">Location</th>
+            <th style="padding:11px 12px;font-weight:700">Last course</th>
+            <th style="padding:11px 12px;font-weight:700">Best course fit</th>
+            <th style="padding:11px 36px;font-weight:700;text-align:right">Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ feedRows }}" as="row" hint-placeholder-count="8">
+            <tr style="border-bottom:1px solid #ededed;cursor:pointer" style-hover="background:#f4f4f4">
+              <td style="padding:11px 36px;color:#55565a;white-space:nowrap">{{ row.when }}</td>
+              <td style="padding:11px 12px;font-weight:700">{{ row.name }}</td>
+              <td style="padding:11px 12px">{{ row.event }}</td>
+              <td style="padding:11px 12px;color:#55565a">{{ row.location }}</td>
+              <td style="padding:11px 12px;color:#55565a">{{ row.lastCourse }}</td>
+              <td style="padding:11px 12px;color:#55565a">{{ row.fit }}</td>
+              <td style="padding:11px 36px;text-align:right;font-weight:700;font-size:16px">{{ row.score }}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isCohorts }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="02 Cohorts" style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <div style="flex:none;background:#f4f4f4;border-bottom:1px solid #e0e0e0;padding:24px 36px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#55565a">Your query · click any part to change it</div>
+      <div style="margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:22px;line-height:1.5">
+        <span style="color:#55565a">Compare</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openCohortA }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ cohortA }}</span><span> ▾</span></span>
+          <sc-if value="{{ cohortAOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:220px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="5"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">against</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openCohortB }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ cohortB }}</span><span> ▾</span></span>
+          <sc-if value="{{ cohortBOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:220px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="5"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">on engagement over</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openCohortWindow }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ cohortWindow }}</span><span> ▾</span></span>
+          <sc-if value="{{ cohortWindowOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:200px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="3"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+      </div>
+    </div>
+    <div style="flex:none;padding:20px 36px 16px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid #000">
+      <div>
+        <div style="font-size:30px;font-weight:700;letter-spacing:-0.02em">{{ cohortHeadline }}</div>
+        <div style="font-size:14px;color:#55565a;margin-top:2px">{{ cohortSub }}</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <span style="background:#FFD100;color:#000;font-size:14px;font-weight:700;padding:10px 18px;cursor:pointer">A/B test the template</span>
+        <span style="border:2px solid #000;font-size:14px;font-weight:500;padding:8px 16px;cursor:pointer" style-hover="background:#000;color:#fff">Revert cadence</span>
+      </div>
+    </div>
+    <div style="flex:1;min-height:0;display:flex">
+      <div style="flex:1;min-width:0;padding:22px 30px 22px 36px;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <span style="font-size:16px;font-weight:700">Engagement, rolling 30-day</span>
+          <span style="display:flex;gap:18px;font-size:13px;color:#55565a"><span style="color:#000">—— {{ cohortA }}</span><span>—— {{ cohortB }}</span></span>
+        </div>
+        <svg viewBox="0 0 900 200" style="width:100%;flex:1;min-height:220px;margin-top:12px" preserveAspectRatio="none">
+          <line x1="20" y1="20" x2="880" y2="20" stroke="#ededed" stroke-width="1"></line>
+          <line x1="20" y1="105" x2="880" y2="105" stroke="#ededed" stroke-width="1"></line>
+          <line x1="20" y1="190" x2="880" y2="190" stroke="#000" stroke-width="1.5"></line>
+          <polyline points="{{ cohortBPoints }}" fill="none" stroke="#c8c8c8" stroke-width="2"></polyline>
+          <polyline points="{{ cohortAPoints }}" fill="none" stroke="#000" stroke-width="3"></polyline>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#55565a;margin-top:6px">
+          <sc-for list="{{ monthLabels }}" as="m" hint-placeholder-count="6"><span>{{ m }}</span></sc-for>
+        </div>
+      </div>
+      <div style="width:420px;flex:none;border-left:1px solid #e0e0e0;padding:22px 36px 22px 30px;display:flex;flex-direction:column;gap:18px">
+        <div>
+          <div style="font-size:16px;font-weight:700;border-bottom:2px solid #000;padding-bottom:8px">What the agent found</div>
+          <div style="margin-top:12px;font-size:16px;font-weight:300;line-height:1.6;text-wrap:pretty">{{ cohortFinding }}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a">All cohorts</div>
+          <table style="width:100%;border-collapse:collapse;font-size:14px;text-align:left;margin-top:8px">
+            <thead><tr style="font-size:11px;color:#55565a;border-bottom:1px solid #e0e0e0"><th style="padding:7px 0;font-weight:500">Cohort</th><th style="padding:7px 0;font-weight:500;text-align:right">Size</th><th style="padding:7px 0;font-weight:500;text-align:right">Eng.</th><th style="padding:7px 0;font-weight:500;text-align:right">Δ vs Q1</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ cohortRows }}" as="c" hint-placeholder-count="5">
+                <tr style="border-bottom:1px solid #ededed"><td style="padding:9px 0">{{ c.label }}</td><td style="padding:9px 0;text-align:right;color:#55565a">{{ c.size }}</td><td style="padding:9px 0;text-align:right;font-weight:700">{{ c.eng }}</td><td style="padding:9px 0;text-align:right;color:#55565a">{{ c.delta }}</td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <span style="border:1px solid #1ac987;color:#0d7a54;font-family:'Roboto Mono',monospace;font-size:11px;padding:2px 8px">query_ajo ✓</span>
+          <span style="border:1px solid #1ac987;color:#0d7a54;font-family:'Roboto Mono',monospace;font-size:11px;padding:2px 8px">compare_cohorts ✓</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isSegments }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="03 Segments" style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <div style="flex:none;background:#f4f4f4;border-bottom:1px solid #e0e0e0;padding:24px 36px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#55565a">Your query · click any part to change it</div>
+      <div style="margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:22px;line-height:1.5">
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openQStudy }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ qStudy }}</span><span> ▾</span></span>
+          <sc-if value="{{ qStudyOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:240px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="4"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">graduates</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openQSignal }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ qSignal }}</span><span> ▾</span></span>
+          <sc-if value="{{ qSignalOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:240px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="4"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">in the last</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openQWindow }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ qWindow }}</span><span> ▾</span></span>
+          <sc-if value="{{ qWindowOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:200px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="3"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">, working</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openQLoc }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ qLoc }}</span><span> ▾</span></span>
+          <sc-if value="{{ qLocOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:220px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="3"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">, with no course purchase in</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openQGap }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ qGap }}</span><span> ▾</span></span>
+          <sc-if value="{{ qGapOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:200px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="3"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="border:1.5px dashed #8f9296;color:#8f9296;padding:4px 12px;font-size:18px;cursor:pointer" style-hover="border-color:#000;color:#000">+ add a condition</span>
+      </div>
+    </div>
+    <div style="flex:none;padding:18px 36px 14px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid #000">
+      <div>
+        <div style="font-size:30px;font-weight:700;letter-spacing:-0.02em">{{ matchCount }} alumni matched</div>
+        <div style="font-size:14px;color:#55565a;margin-top:2px">{{ matchSub }}</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <span style="border:2px solid #000;font-size:14px;font-weight:500;padding:9px 16px;cursor:pointer" style-hover="background:#000;color:#fff">Draft AJO campaign</span>
+        <span style="border:2px solid #000;font-size:14px;font-weight:500;padding:9px 16px;cursor:pointer" style-hover="background:#000;color:#fff">Find lookalikes</span>
+        <span onClick="{{ goForecast }}" style="border:2px solid #000;font-size:14px;font-weight:500;padding:9px 16px;cursor:pointer" style-hover="background:#000;color:#fff">Forecast this segment</span>
+      </div>
+    </div>
+    <div style="flex:1;min-height:0">
+      <table style="width:100%;border-collapse:collapse;font-size:14px;text-align:left">
+        <thead>
+          <tr style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a;border-bottom:1px solid #e0e0e0">
+            <th style="padding:11px 36px;font-weight:700">Name</th>
+            <th style="padding:11px 12px;font-weight:700">Current role</th>
+            <th style="padding:11px 12px;font-weight:700">Employer</th>
+            <th style="padding:11px 12px;font-weight:700">Location</th>
+            <th style="padding:11px 12px;font-weight:700">Signals</th>
+            <th style="padding:11px 12px;font-weight:700">Last course</th>
+            <th style="padding:11px 12px;font-weight:700">Consent</th>
+            <th style="padding:11px 36px;font-weight:700;text-align:right">Propensity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ segmentRows }}" as="row" hint-placeholder-count="6">
+            <tr style="border-bottom:1px solid #ededed;cursor:pointer" style-hover="background:#f4f4f4">
+              <td style="padding:12px 36px;font-weight:700">{{ row.name }}</td>
+              <td style="padding:12px;color:#55565a">{{ row.role }}</td>
+              <td style="padding:12px;color:#55565a">{{ row.employer }}</td>
+              <td style="padding:12px;color:#55565a">{{ row.location }}</td>
+              <td style="padding:12px;color:#55565a">{{ row.signalLabel }}</td>
+              <td style="padding:12px;color:#55565a">{{ row.lastCourse }}</td>
+              <td style="padding:12px;color:#0d7a54">{{ row.consent }}</td>
+              <td style="padding:12px 36px;text-align:right;font-weight:700;font-size:16px">{{ row.score }}</td>
+            </tr>
+          </sc-for>
+          <tr><td style="padding:14px 36px;color:#55565a" colspan="8">{{ segmentFooter }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isForecast }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="04 Forecast" style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <div style="flex:none;background:#f4f4f4;border-bottom:1px solid #e0e0e0;padding:24px 36px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#55565a">Your query · click any part to change it</div>
+      <div style="margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:22px;line-height:1.5">
+        <span style="color:#55565a">Forecast</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openFcSegment }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ fcSegment }}</span><span> ▾</span></span>
+          <sc-if value="{{ fcSegmentOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:280px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="4"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">at</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openFcUplift }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ fcUplift }}</span><span> ▾</span></span>
+          <sc-if value="{{ fcUpliftOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:200px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="4"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">uplift,</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openFcValue }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ fcValue }}</span><span> ▾</span></span>
+          <sc-if value="{{ fcValueOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:200px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="4"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">course value and</span>
+        <span style="position:relative;display:inline-block">
+          <span onClick="{{ openFcCost }}" style="background:#fff;border-bottom:3px solid #FFD100;padding:4px 10px;font-weight:700;cursor:pointer"><span>{{ fcCost }}</span><span> ▾</span></span>
+          <sc-if value="{{ fcCostOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:100%;left:0;z-index:30;background:#fff;border:2px solid #000;min-width:200px;display:flex;flex-direction:column;box-shadow:0 12px 28px rgba(0,0,0,0.18)">
+              <sc-for list="{{ menuOptions }}" as="opt" hint-placeholder-count="4"><span onClick="{{ opt.pick }}" style="padding:10px 14px;font-size:15px;cursor:pointer" style-hover="background:#f4f4f4">{{ opt.label }}</span></sc-for>
+            </span>
+          </sc-if>
+        </span>
+        <span style="color:#55565a">of spend.</span>
+      </div>
+    </div>
+    <div style="flex:none;background:#000;padding:30px 36px;display:flex;align-items:flex-end;gap:40px">
+      <div>
+        <div style="font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#FFD100">Projected incremental revenue · 12 months</div>
+        <div style="font-size:80px;font-weight:700;letter-spacing:-0.04em;line-height:0.95;color:#fff;margin-top:6px">{{ fcRevenue }}</div>
+      </div>
+      <div style="display:flex;gap:34px;padding-bottom:14px">
+        <div><div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.6)">Enrolments</div><div style="font-size:34px;font-weight:700;letter-spacing:-0.025em;color:#fff">{{ fcEnrolments }}</div></div>
+        <div><div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.6)">ROI</div><div style="font-size:34px;font-weight:700;letter-spacing:-0.025em;color:#fff">{{ fcRoi }}</div></div>
+        <div><div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.6)">Payback</div><div style="font-size:34px;font-weight:700;letter-spacing:-0.025em;color:#fff">{{ fcPayback }}</div></div>
+        <div><div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.6)">Segment</div><div style="font-size:34px;font-weight:700;letter-spacing:-0.025em;color:#fff">{{ fcSize }}</div></div>
+      </div>
+    </div>
+    <div style="flex:1;min-height:0;display:flex">
+      <div style="flex:1;min-width:0;padding:22px 30px 22px 36px;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #000;padding-bottom:8px">
+          <span style="font-size:16px;font-weight:700">Baseline vs treated — monthly enrolments</span>
+          <span style="display:flex;gap:18px;font-size:13px;color:#55565a"><span>— — baseline</span><span style="color:#000">—— treated</span></span>
+        </div>
+        <svg viewBox="0 0 900 200" style="width:100%;flex:1;min-height:230px;margin-top:12px" preserveAspectRatio="none">
+          <polygon points="{{ fcAreaPoints }}" fill="#FFD100" opacity="0.5"></polygon>
+          <line x1="20" y1="20" x2="880" y2="20" stroke="#ededed" stroke-width="1"></line>
+          <line x1="20" y1="190" x2="880" y2="190" stroke="#000" stroke-width="1.5"></line>
+          <polyline points="{{ fcBaselinePoints }}" fill="none" stroke="#8f9296" stroke-width="2" stroke-dasharray="7 5"></polyline>
+          <polyline points="{{ fcTreatedPoints }}" fill="none" stroke="#000" stroke-width="3"></polyline>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#55565a;margin-top:6px"><span>M+1</span><span>M+3</span><span>M+5</span><span>M+7</span><span>M+9</span><span>M+11</span><span>M+12</span></div>
+      </div>
+      <div style="width:460px;flex:none;border-left:1px solid #e0e0e0;padding:22px 36px 22px 30px;display:flex;flex-direction:column;gap:18px">
+        <div>
+          <div style="font-size:16px;font-weight:700;border-bottom:2px solid #000;padding-bottom:8px">Scenarios</div>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:2px">
+            <sc-for list="{{ scenarios }}" as="s" hint-placeholder-count="4">
+              <div onClick="{{ s.apply }}" style="display:flex;align-items:baseline;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ededed;cursor:pointer" style-hover="background:#f4f4f4">
+                <span style="font-size:15px">{{ s.label }}</span>
+                <span style="display:flex;align-items:baseline;gap:14px"><span style="font-size:13px;color:#55565a">{{ s.revenue }}</span><span style="font-size:18px;font-weight:700">{{ s.roi }}</span></span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a">Model assumptions</div>
+          <ul style="margin:10px 0 0;padding-left:18px;font-size:13px;line-height:1.7;color:#55565a">
+            <sc-for list="{{ assumptions }}" as="a" hint-placeholder-count="5"><li>{{ a }}</li></sc-for>
+          </ul>
+        </div>
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+          <span style="background:#FFD100;color:#000;font-size:15px;font-weight:700;padding:13px 22px;text-align:center;cursor:pointer">Export the brief</span>
+          <span style="border:2px solid #000;font-size:14px;font-weight:500;padding:11px 20px;text-align:center;cursor:pointer" style-hover="background:#000;color:#fff">Draft the campaign in AJO</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <div style="height:44px;flex:none;border-top:1px solid #e0e0e0;background:#f4f4f4;display:flex;align-items:center;justify-content:space-between;padding:0 36px">
+    <div style="display:flex;gap:6px;align-items:center">
+      <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#55565a;margin-right:6px">Tools used</span>
+      <sc-for list="{{ toolChips }}" as="t" hint-placeholder-count="4"><span style="border:1px solid #1ac987;color:#0d7a54;background:#fff;font-family:'Roboto Mono',monospace;font-size:11px;padding:2px 8px">{{ t }}</span></sc-for>
+    </div>
+    <span onClick="{{ toggleAudit }}" style="font-size:13px;color:#55565a;cursor:pointer;border-bottom:1px solid #8f9296">{{ auditLabel }}</span>
+  </div>
+
+  <sc-if value="{{ auditOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;top:0;right:0;bottom:0;width:420px;z-index:60;background:#fff;border-left:2px solid #000;display:flex;flex-direction:column;box-shadow:-18px 0 42px rgba(0,0,0,0.16)">
+      <div style="flex:none;background:#000;color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#FFD100">Audit log</div>
+          <div style="font-size:20px;font-weight:700;margin-top:2px">{{ auditCount }} events this session</div>
+        </div>
+        <span onClick="{{ toggleAudit }}" style="cursor:pointer;font-size:22px;line-height:1">✕</span>
+      </div>
+      <div style="flex:1;overflow:auto;padding:18px 24px;display:flex;flex-direction:column;gap:14px">
+        <sc-for list="{{ auditEntries }}" as="e" hint-placeholder-count="6">
+          <div style="display:flex;gap:12px;font-family:'Roboto Mono',monospace;font-size:11px;line-height:1.6">
+            <span style="color:#8f9296;flex:none">{{ e.time }}</span>
+            <span style="width:7px;height:7px;background:#1ac987;border-radius:50%;flex:none;margin-top:5px"></span>
+            <span><span style="display:block;color:#000;font-size:12px">{{ e.tool }}</span><span style="display:block;color:#55565a">{{ e.detail }}</span></span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:none;border-top:1px solid #e0e0e0;padding:14px 24px;font-size:12px;color:#55565a;line-height:1.6">Every tool call is written to the log with the acting user, the scope of data touched and the policy version in force. Governed by UNSW policy v1.2.</div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#FFD100&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#FFD100&quot;,&quot;#FFB800&quot;,&quot;#E8B500&quot;],&quot;section&quot;:&quot;Brand&quot;}}">
+const ALUMNI = [
+  { id:1, name:"Declan O'Shea", role:'Head of Data', employer:'Atlas Energy Grid', industry:'Technology', city:'Melbourne', state:'VIC', sydneyMetro:false, study:'Computer Science', grad:2011, signals:['promoted','moved'], event:'Promoted to Head of Data', when:'6 weeks ago', lastCourse:'Mar 2022', consent:'Email, SMS', score:0.912 },
+  { id:2, name:'Priya Nandakumar', role:'Director', employer:'Meridian Capital', industry:'Financial Services', city:'Wollongong', state:'NSW', sydneyMetro:false, study:'Computer Science', grad:2008, signals:['promoted'], event:'Moved onto the leadership track', when:'4 months ago', lastCourse:'Nov 2021', consent:'Email, SMS', score:0.884 },
+  { id:3, name:'Heidi Kutch', role:'Manager', employer:'Southline Power', industry:'Energy', city:'Parramatta', state:'NSW', sydneyMetro:true, study:'Engineering', grad:2016, signals:['promoted','course gap'], event:'Promoted to Manager', when:'2 months ago', lastCourse:'Jun 2020', consent:'Email, SMS', score:0.851 },
+  { id:4, name:'Tom Bergstrom', role:'Senior Engineer', employer:'Nordhealth AU', industry:'Healthcare', city:'Adelaide', state:'SA', sydneyMetro:false, study:'Computer Science', grad:2015, signals:['redundancy risk','role change'], event:'Redundancy signal plus a role change', when:'3 weeks ago', lastCourse:'Feb 2019', consent:'Email', score:0.828 },
+  { id:5, name:'Amara Whitfield', role:'Program Lead', employer:'Hunter TAFE', industry:'Education', city:'Newcastle', state:'NSW', sydneyMetro:false, study:'Commerce', grad:2010, signals:['role change'], event:'Changed role within Hunter TAFE', when:'3 months ago', lastCourse:'Aug 2021', consent:'Email', score:0.804 },
+  { id:6, name:'Ngoc Tran', role:'Principal Analyst', employer:'Dept. of Industry', industry:'Government', city:'Canberra', state:'ACT', sydneyMetro:false, study:'Computer Science', grad:2014, signals:['promoted','course gap'], event:'Promoted to Principal Analyst', when:'5 months ago', lastCourse:'Jan 2023', consent:'Email, SMS', score:0.791 },
+  { id:7, name:'Sam Okafor', role:'Engineering Manager', employer:'Brightline Labs', industry:'Technology', city:'Brisbane', state:'QLD', sydneyMetro:false, study:'Computer Science', grad:2017, signals:['promoted','role change'], event:'First people-leadership role', when:'7 weeks ago', lastCourse:'Sep 2022', consent:'Email', score:0.777 },
+  { id:8, name:'Ioana Petrescu', role:'Data Platform Lead', employer:'Kestrel Mining', industry:'Energy', city:'Kalgoorlie', state:'WA', sydneyMetro:false, study:'Computer Science', grad:2013, signals:['promoted','moved'], event:'Promoted and relocated to Kalgoorlie', when:'2 months ago', lastCourse:'Feb 2020', consent:'Email, SMS', score:0.768 },
+  { id:9, name:'Wei Chen', role:'Solutions Architect', employer:'Northbridge Bank', industry:'Financial Services', city:'Geelong', state:'VIC', sydneyMetro:false, study:'Computer Science', grad:2016, signals:['promoted','course gap'], event:'Promoted to Solutions Architect', when:'9 weeks ago', lastCourse:'Mar 2021', consent:'Email', score:0.757 },
+  { id:10, name:'Maddison Martin', role:'Coordinator', employer:'Reef Advisory', industry:'Professional Services', city:'Cairns', state:'QLD', sydneyMetro:false, study:'Commerce', grad:2013, signals:['industry change'], event:'Switched industry into advisory', when:'4 months ago', lastCourse:'May 2018', consent:'Email', score:0.742 },
+  { id:11, name:'Ben Halloran', role:'Product Owner', employer:'Civic Digital', industry:'Technology', city:'Hobart', state:'TAS', sydneyMetro:false, study:'Computer Science', grad:2012, signals:['role change','course gap'], event:'Moved from delivery into product', when:'5 months ago', lastCourse:'Oct 2019', consent:'Email, SMS', score:0.731 },
+  { id:12, name:'Ravi Iyer', role:'Finance Lead', employer:'Harbourline Group', industry:'Financial Services', city:'Perth', state:'WA', sydneyMetro:false, study:'Commerce', grad:2009, signals:['industry change'], event:'Switched from audit into corporate finance', when:'6 months ago', lastCourse:'Apr 2017', consent:'Email', score:0.718 },
+  { id:13, name:'Clara Fenwick', role:'Head of People', employer:'Ridgeway Health', industry:'Healthcare', city:'Sydney', state:'NSW', sydneyMetro:true, study:'Commerce', grad:2007, signals:['promoted'], event:'Promoted to Head of People', when:'8 weeks ago', lastCourse:'Jun 2023', consent:'Email, SMS', score:0.706 },
+  { id:14, name:'Marcus Auld', role:'Operations Manager', employer:'Fairwind Logistics', industry:'Transport', city:'Darwin', state:'NT', sydneyMetro:false, study:'Engineering', grad:2018, signals:['redundancy risk'], event:'Employer announced restructure', when:'10 days ago', lastCourse:'Nov 2020', consent:'Email', score:0.694 }
+];
+
+const COURSE_FIT = {
+  Technology:'AI for Leaders', 'Financial Services':'AI for Leaders', Energy:'Data Strategy',
+  Healthcare:'Change Leadership', Education:'Learning Design', Government:'Public Sector Analytics',
+  'Professional Services':'Client Advisory', Transport:'Operations Analytics'
+};
+
+const COHORTS = {
+  'All Alumni':      { size:2000, series:[66,66,67,66,65,66,65,66,65,65,65,65], delta:'−1.2 pts' },
+  'Recent Grads':    { size:412,  series:[52,51,53,52,54,53,55,54,56,55,55,55], delta:'+2.4 pts' },
+  'Mid-Career':      { size:786,  series:[69,68,69,68,66,67,65,66,64,63,48,46], delta:'−22%' },
+  'High-Signal':     { size:344,  series:[72,73,73,74,75,75,76,77,77,78,78,78], delta:'+5.1 pts' },
+  'Dormant':         { size:458,  series:[13,13,12,12,13,12,12,12,12,12,12,12], delta:'flat' }
+};
+
+const MONTHS = ['2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07'];
+
+const MATCH_BASE = { 'Computer Science':340, 'Engineering':318, 'Commerce':274, 'Any field':1180 };
+const F_SIGNAL = { 'promoted':1, 'who changed role':0.78, 'at redundancy risk':0.27, 'with any signal':2.1 };
+const F_WINDOW = { '6 months':0.58, '12 months':1, '24 months':1.54 };
+const F_LOC = { 'outside Sydney':1, 'anywhere in Australia':1.62, 'in regional NSW':0.44 };
+const F_GAP = { '1 year':1.31, '3 years':1, '5 years':0.62 };
+
+const SIGNAL_MATCH = { 'promoted':'promoted', 'who changed role':'role change', 'at redundancy risk':'redundancy risk', 'with any signal':null };
+const GAP_CUTOFF = { '1 year':2025.5, '3 years':2023.5, '5 years':2021.5 };
+const MONTH_NUM = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+
+const SEGMENTS = {
+  'CS grads promoted': 340,
+  'Leadership lookalikes': 612,
+  'Healthcare 5-year gap': 288,
+  'Dormant, high seniority': 458
+};
+
+const OPTIONS = {
+  'feed.scope': ['all signals','promotions only','role changes only','redundancy risk only'],
+  'feed.window': ['7 days','30 days','90 days'],
+  'feed.rank': ['confidence','recency','course value'],
+  'cohort.a': ['All Alumni','Recent Grads','Mid-Career','High-Signal','Dormant'],
+  'cohort.b': ['All Alumni','Recent Grads','Mid-Career','High-Signal','Dormant'],
+  'cohort.window': ['6 months','12 months','24 months'],
+  'q.study': ['Computer Science','Engineering','Commerce','Any field'],
+  'q.signal': ['promoted','who changed role','at redundancy risk','with any signal'],
+  'q.window': ['6 months','12 months','24 months'],
+  'q.loc': ['outside Sydney','anywhere in Australia','in regional NSW'],
+  'q.gap': ['1 year','3 years','5 years'],
+  'fc.segment': ['CS grads promoted','Leadership lookalikes','Healthcare 5-year gap','Dormant, high seniority'],
+  'fc.uplift': [3,6,9,12],
+  'fc.value': [2500,3500,4500,6000],
+  'fc.cost': [4000,8000,14000,25000]
+};
+
+const AUDIT = [
+  { time:'10:42:19', tool:'simulate_forecast', detail:'uplift=9pts · n=340' },
+  { time:'10:41:55', tool:'simulate_forecast', detail:'base · n=340' },
+  { time:'10:38:44', tool:'build_lookalike', detail:'seed=leadership_buyers' },
+  { time:'10:36:58', tool:'run_propensity_model', detail:'course=ai-for-leaders · n=340' },
+  { time:'10:36:55', tool:'enrich_linkedin', detail:'340 profiles · consent=true' },
+  { time:'10:36:53', tool:'query_dynamics', detail:'contact ⋈ education_history' },
+  { time:'10:31:12', tool:'compare_cohorts', detail:'mid_career vs recent_grads' },
+  { time:'10:31:09', tool:'query_ajo', detail:'sends · 2026-05..2026-07' },
+  { time:'10:24:03', tool:'run_propensity_model', detail:'course=ai-for-leaders · n=2000' },
+  { time:'10:24:01', tool:'query_dynamics', detail:'contact · consent=true' },
+  { time:'10:23:58', tool:'query_aep', detail:'signals · window=90d' }
+];
+
+const TOOLS_BY_TAB = [
+  ['query_aep ✓','query_dynamics ✓','run_propensity_model ✓'],
+  ['query_ajo ✓','compare_cohorts ✓'],
+  ['query_dynamics ✓','query_aep ✓','enrich_linkedin ✓','run_propensity_model ✓'],
+  ['simulate_forecast ✓']
+];
+
+function computeForecast(input) {
+  const baselinePerMonth = (input.segmentSize * input.baselineConversionRate) / 12;
+  const treatedRatePerMonth = input.baselineConversionRate + input.upliftPct / 100;
+  const treatedPerMonthFull = (input.segmentSize * treatedRatePerMonth) / 12;
+  const monthly = Array.from({ length: 12 }, (_, i) => {
+    const ramp = Math.min(1, (i + 1) / 3);
+    return {
+      month: 'M+' + (i + 1),
+      baseline: Number(baselinePerMonth.toFixed(2)),
+      treated: Number((baselinePerMonth + (treatedPerMonthFull - baselinePerMonth) * ramp).toFixed(2))
+    };
+  });
+  const baselineTotal = monthly.reduce((s, m) => s + m.baseline, 0);
+  const treatedTotal = monthly.reduce((s, m) => s + m.treated, 0);
+  const incrementalConversions = treatedTotal - baselineTotal;
+  const incrementalRevenueAud = incrementalConversions * input.courseValueAud;
+  const roi = (incrementalRevenueAud - input.campaignCostAud) / input.campaignCostAud;
+  return { monthly, incrementalConversions, incrementalRevenueAud, roi };
+}
+
+const aud = n => 'A$' + Math.round(n).toLocaleString('en-AU');
+const pct = n => Math.round(n * 100).toLocaleString('en-AU') + '%';
+
+function lastCourseYear(s) {
+  const parts = String(s).split(' ');
+  return Number(parts[1]) + (MONTH_NUM[parts[0]] || 0) / 12;
+}
+
+function polyline(vals, max, w) {
+  const n = vals.length;
+  return vals.map((v, i) => (20 + i * (860 / (n - 1))).toFixed(1) + ',' + (190 - (v / max) * 168).toFixed(1)).join(' ');
+}
+
+class Component extends DCLogic {
+  state = {
+    tab: 2,
+    menu: null,
+    audit: false,
+    feed: { scope: 'all signals', window: '30 days', rank: 'confidence' },
+    cohort: { a: 'Mid-Career', b: 'Recent Grads', window: '12 months' },
+    q: { study: 'Computer Science', signal: 'promoted', window: '12 months', loc: 'outside Sydney', gap: '3 years' },
+    fc: { segment: 'CS grads promoted', uplift: 6, value: 3500, cost: 8000 }
+  };
+
+  open(key) { return () => this.setState(s => ({ menu: s.menu === key ? null : key })); }
+
+  pick(key, value) {
+    return () => {
+      const [group, field] = key.split('.');
+      this.setState(s => ({ menu: null, [group]: Object.assign({}, s[group], { [field]: value }) }));
+    };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const menu = st.menu;
+    const accent = this.props.accentColor || '#FFD100';
+
+    const menuOptions = menu
+      ? (OPTIONS[menu] || []).map(v => ({
+          label: menu === 'fc.uplift' ? v.toFixed(1) + ' pts'
+            : (menu === 'fc.value' || menu === 'fc.cost') ? '$' + v.toLocaleString('en-AU')
+            : String(v),
+          pick: this.pick(menu, v)
+        }))
+      : [];
+
+    // ---- Signals feed
+    const scopeSignal = { 'all signals': null, 'promotions only': 'promoted', 'role changes only': 'role change', 'redundancy risk only': 'redundancy risk' }[st.feed.scope];
+    let feedRows = ALUMNI.filter(a => !scopeSignal || a.signals.indexOf(scopeSignal) > -1);
+    feedRows = feedRows.slice().sort((a, b) => st.feed.rank === 'course value' ? b.grad - a.grad : b.score - a.score);
+    const windowFactor = { '7 days': 0.24, '30 days': 1, '90 days': 2.7 }[st.feed.window];
+    const scopeFactor = { 'all signals': 1, 'promotions only': 0.32, 'role changes only': 0.25, 'redundancy risk only': 0.09 }[st.feed.scope];
+    const momentsTotal = Math.round(1288 * windowFactor * scopeFactor).toLocaleString('en-AU');
+    const momentsUnactioned = Math.round(214 * windowFactor * scopeFactor).toLocaleString('en-AU');
+
+    // ---- Cohorts
+    const A = COHORTS[st.cohort.a], B = COHORTS[st.cohort.b];
+    const cut = { '6 months': 6, '12 months': 12, '24 months': 12 }[st.cohort.window];
+    const aSeries = A.series.slice(A.series.length - cut), bSeries = B.series.slice(B.series.length - cut);
+    const labels = MONTHS.slice(MONTHS.length - cut).filter((_, i) => i % Math.max(1, Math.round(cut / 6)) === 0);
+    const aNow = aSeries[aSeries.length - 1], aThen = aSeries[0];
+    const change = Math.round(((aNow - aThen) / aThen) * 100);
+
+    // ---- Segments
+    const sig = SIGNAL_MATCH[st.q.signal];
+    const cutoff = GAP_CUTOFF[st.q.gap];
+    const segmentRows = ALUMNI.filter(a => {
+      if (st.q.study !== 'Any field' && a.study !== st.q.study) return false;
+      if (sig && a.signals.indexOf(sig) === -1) return false;
+      if (st.q.loc === 'outside Sydney' && a.sydneyMetro) return false;
+      if (st.q.loc === 'in regional NSW' && !(a.state === 'NSW' && !a.sydneyMetro)) return false;
+      if (lastCourseYear(a.lastCourse) > cutoff) return false;
+      return true;
+    }).sort((a, b) => b.score - a.score).map(a => ({
+      name: a.name, role: a.role, employer: a.employer,
+      location: a.city + ' ' + a.state,
+      signalLabel: a.signals.join(', '),
+      lastCourse: a.lastCourse, consent: a.consent, score: a.score.toFixed(3)
+    }));
+
+    const matchCount = Math.round(
+      MATCH_BASE[st.q.study] * F_SIGNAL[st.q.signal] * F_WINDOW[st.q.window] * F_LOC[st.q.loc] * F_GAP[st.q.gap]
+    );
+    const consentPct = Math.round(matchCount * 0.94).toLocaleString('en-AU');
+
+    // ---- Forecast
+    const size = SEGMENTS[st.fc.segment];
+    const base = { segmentSize: size, baselineConversionRate: 0.02, upliftPct: st.fc.uplift, courseValueAud: st.fc.value, campaignCostAud: st.fc.cost };
+    const r = computeForecast(base);
+    const maxT = Math.max.apply(null, r.monthly.map(m => m.treated)) || 1;
+    let cum = 0, payback = '—';
+    for (let i = 0; i < r.monthly.length; i++) {
+      cum += (r.monthly[i].treated - r.monthly[i].baseline) * st.fc.value;
+      if (cum >= st.fc.cost) { payback = 'M+' + (i + 1); break; }
+    }
+    const treatedPts = polyline(r.monthly.map(m => m.treated), maxT);
+    const baselinePts = polyline(r.monthly.map(m => m.baseline), maxT);
+
+    const scenarioDefs = [
+      { label: 'Uplift 9 pts', patch: { uplift: 9 } },
+      { label: 'Widen to lookalikes (612)', patch: { segment: 'Leadership lookalikes' } },
+      { label: 'Premium course at $6,000', patch: { value: 6000 } },
+      { label: 'Halve the spend to $4,000', patch: { cost: 4000 } }
+    ];
+    const scenarios = scenarioDefs.map(d => {
+      const cfg = Object.assign({}, st.fc, d.patch);
+      const res = computeForecast({ segmentSize: SEGMENTS[cfg.segment], baselineConversionRate: 0.02, upliftPct: cfg.uplift, courseValueAud: cfg.value, campaignCostAud: cfg.cost });
+      return {
+        label: d.label,
+        revenue: aud(res.incrementalRevenueAud),
+        roi: pct(res.roi),
+        apply: () => this.setState(s => ({ fc: Object.assign({}, s.fc, d.patch), menu: null }))
+      };
+    });
+
+    return {
+      accent,
+      isSignals: st.tab === 0, notSignals: st.tab !== 0,
+      isCohorts: st.tab === 1, notCohorts: st.tab !== 1,
+      isSegments: st.tab === 2, notSegments: st.tab !== 2,
+      isForecast: st.tab === 3, notForecast: st.tab !== 3,
+      goSignals: () => this.setState({ tab: 0, menu: null }),
+      goCohorts: () => this.setState({ tab: 1, menu: null }),
+      goSegments: () => this.setState({ tab: 2, menu: null }),
+      goForecast: () => this.setState({ tab: 3, menu: null }),
+
+      menuOptions,
+      toolChips: TOOLS_BY_TAB[st.tab],
+      auditOpen: !!st.audit,
+      auditCount: AUDIT.length,
+      auditLabel: st.audit ? 'Hide the audit log' : 'Show the audit log · ' + AUDIT.length + ' events',
+      auditEntries: AUDIT,
+      toggleAudit: () => this.setState(s => ({ audit: !s.audit })),
+
+      feedScope: st.feed.scope, feedWindow: st.feed.window, feedRank: st.feed.rank,
+      feedScopeOpen: menu === 'feed.scope', feedWindowOpen: menu === 'feed.window', feedRankOpen: menu === 'feed.rank',
+      openFeedScope: this.open('feed.scope'), openFeedWindow: this.open('feed.window'), openFeedRank: this.open('feed.rank'),
+      momentsTotal, momentsUnactioned,
+      feedRows: feedRows.map(a => ({
+        when: a.when, name: a.name, event: a.event,
+        location: a.city + ' ' + a.state, lastCourse: a.lastCourse,
+        fit: COURSE_FIT[a.industry] || 'AI for Leaders', score: a.score.toFixed(3)
+      })),
+
+      cohortA: st.cohort.a, cohortB: st.cohort.b, cohortWindow: st.cohort.window,
+      cohortAOpen: menu === 'cohort.a', cohortBOpen: menu === 'cohort.b', cohortWindowOpen: menu === 'cohort.window',
+      openCohortA: this.open('cohort.a'), openCohortB: this.open('cohort.b'), openCohortWindow: this.open('cohort.window'),
+      cohortAPoints: polyline(aSeries, 100), cohortBPoints: polyline(bSeries, 100),
+      monthLabels: labels,
+      cohortHeadline: st.cohort.a + ' engagement is ' + aNow + '%, ' + A.delta + ' against last quarter',
+      cohortSub: A.size.toLocaleString('en-AU') + ' alumni · compared against ' + st.cohort.b + ' (' + B.size.toLocaleString('en-AU') + ')',
+      cohortFinding: st.cohort.a === 'Mid-Career'
+        ? 'Two things changed on 12 June: cadence moved weekly to fortnightly, and the nurture template switched to the new hero layout. Open rate held; click-through fell 31%. ' + st.cohort.b + ' were unaffected, which points at the template rather than the cadence.'
+        : st.cohort.a + ' is tracking ' + (change < 0 ? 'down' : 'up') + ' over the window with no send-side change detected. The gap against ' + st.cohort.b + ' is driven by cohort composition, not campaign performance.',
+      cohortRows: Object.keys(COHORTS).map(k => ({
+        label: k, size: COHORTS[k].size.toLocaleString('en-AU'),
+        eng: COHORTS[k].series[COHORTS[k].series.length - 1] + '%', delta: COHORTS[k].delta
+      })),
+
+      qStudy: st.q.study, qSignal: st.q.signal, qWindow: st.q.window, qLoc: st.q.loc, qGap: st.q.gap,
+      qStudyOpen: menu === 'q.study', qSignalOpen: menu === 'q.signal', qWindowOpen: menu === 'q.window',
+      qLocOpen: menu === 'q.loc', qGapOpen: menu === 'q.gap',
+      openQStudy: this.open('q.study'), openQSignal: this.open('q.signal'), openQWindow: this.open('q.window'),
+      openQLoc: this.open('q.loc'), openQGap: this.open('q.gap'),
+      matchCount: matchCount.toLocaleString('en-AU'),
+      matchSub: 'ranked for AI for Leaders · ' + consentPct + ' hold email consent · 12 removed by suppression list',
+      segmentRows,
+      segmentFooter: segmentRows.length
+        ? '+' + Math.max(0, matchCount - segmentRows.length).toLocaleString('en-AU') + ' more, median propensity 0.78'
+        : 'No alumni in the sample match this query — widen a condition above.',
+
+      fcSegment: st.fc.segment,
+      fcUplift: st.fc.uplift.toFixed(1) + ' pts',
+      fcValue: '$' + st.fc.value.toLocaleString('en-AU'),
+      fcCost: '$' + st.fc.cost.toLocaleString('en-AU'),
+      fcSegmentOpen: menu === 'fc.segment', fcUpliftOpen: menu === 'fc.uplift',
+      fcValueOpen: menu === 'fc.value', fcCostOpen: menu === 'fc.cost',
+      openFcSegment: this.open('fc.segment'), openFcUplift: this.open('fc.uplift'),
+      openFcValue: this.open('fc.value'), openFcCost: this.open('fc.cost'),
+      fcRevenue: aud(r.incrementalRevenueAud),
+      fcEnrolments: Math.round(r.incrementalConversions).toLocaleString('en-AU'),
+      fcRoi: pct(r.roi),
+      fcPayback: payback,
+      fcSize: size.toLocaleString('en-AU'),
+      fcTreatedPoints: treatedPts,
+      fcBaselinePoints: baselinePts,
+      fcAreaPoints: treatedPts + ' 880,' + (190 - (r.monthly[11].baseline / maxT) * 168).toFixed(1) + ' 20,' + (190 - (r.monthly[0].baseline / maxT) * 168).toFixed(1),
+      scenarios,
+      assumptions: [
+        'Cluster-based propensity model — a mock, not fit to real UNSW data',
+        'Baseline conversion 2.00% annual, applied to both arms',
+        'Treated ramps to full uplift over three months, holds through month twelve',
+        'No cannibalisation from adjacent campaigns',
+        'Course value is a single-purchase average — bundles and renewals not modelled'
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

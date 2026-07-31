@@ -1,10 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   --background: #ffffff;
-  --foreground: #001a2c;
+  --foreground: #000000;
 }
 
 html,
@@ -12,4 +14,10 @@ body {
   height: 100%;
   background: var(--background);
   color: var(--foreground);
+  font-family: 'Roboto', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-radius: 0 !important;
 }
