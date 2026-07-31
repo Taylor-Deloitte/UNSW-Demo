@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { AgentEvent } from '../lib/agent/events';
+import { logToolCall, updateToolStatus } from '../lib/agent/audit-log';
 
 export interface ToolCall {
   tool: string;
@@ -104,6 +105,14 @@ function applyEvent(
     return;
   }
   if (ev.type === 'tool_use') {
+    if (ev.toolUseId) {
+      logToolCall({
+        id: ev.toolUseId,
+        tool: ev.tool,
+        inputPreview: JSON.stringify(ev.input).slice(0, 80),
+        status: 'running',
+      });
+    }
     setMessages((m) =>
       m.map((msg) =>
         msg.id === agentMsgId
@@ -120,6 +129,9 @@ function applyEvent(
     return;
   }
   if (ev.type === 'tool_result') {
+    if (ev.toolUseId) {
+      updateToolStatus(ev.toolUseId, ev.isError ? 'error' : 'done');
+    }
     setMessages((m) =>
       m.map((msg) =>
         msg.id === agentMsgId

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { brand, tabs } from '../lib/brand';
 import { AgentPanel } from './AgentPanel';
+import { AuditLog } from './AuditLog';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -13,7 +14,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="text-unsw-yellow/80">·</span>
           <span className="text-white/80">{brand.productName}</span>
         </div>
-        <div className="text-sm text-white/60">Demo · synthetic data</div>
+        <div className="flex items-center gap-4 text-xs">
+          <span className="rounded-full border border-white/20 px-3 py-1 text-white/80">
+            Viewing as: <span className="text-white">Marketing Manager · Alumni Engagement</span>
+          </span>
+          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-emerald-300">
+            Governed by UNSW policy v1.2
+          </span>
+          <span className="text-white/60">Demo · synthetic</span>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -23,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <li key={t.href}>
                 <Link
                   href={t.href}
-                  className="block rounded-md px-3 py-2 text-sm text-unsw-navy hover:bg-unsw-mist"
+                  className="block rounded-md px-3 py-2 text-sm text-unsw-navy transition hover:bg-unsw-mist hover:pl-4"
                 >
                   {t.label}
                 </Link>
@@ -34,8 +43,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main className="flex-1 overflow-auto p-6">{children}</main>
 
-        <aside className="w-96 shrink-0 border-l border-unsw-navy/10 bg-white">
-          <AgentPanel />
+        <aside className="flex w-96 shrink-0 flex-col border-l border-unsw-navy/10 bg-white">
+          <div className="flex-1 overflow-hidden">
+            <AgentPanel />
+          </div>
+          <AuditLog />
         </aside>
       </div>
     </div>

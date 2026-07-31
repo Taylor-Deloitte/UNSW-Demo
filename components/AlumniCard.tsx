@@ -1,4 +1,5 @@
 import type { AlumniWithSignals } from '../lib/tab-data/alumni-insights';
+import { GuardrailBadge } from './GuardrailBadge';
 
 const SIGNAL_LABELS: Record<string, string> = {
   promoted: 'Promoted',
@@ -39,7 +40,7 @@ export function AlumniCard({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-xl border border-unsw-navy/10 bg-white p-4 text-left shadow-sm transition hover:border-unsw-navy/30 hover:shadow-md"
+      className="rounded-xl border border-unsw-navy/10 bg-white p-4 text-left shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-unsw-navy/30 hover:shadow-md"
     >
       <div className="mb-3 flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-unsw-navy text-sm font-semibold text-white">
@@ -57,7 +58,7 @@ export function AlumniCard({
       <div className="mb-3 text-xs text-unsw-slate">
         Grad {alumni.graduationYear} · {alumni.city}, {alumni.state}
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div className="mb-2 flex flex-wrap gap-1">
         {recentSignals.length === 0 && (
           <span className="text-xs text-unsw-slate/60">No recent signals</span>
         )}
@@ -71,6 +72,11 @@ export function AlumniCard({
             {SIGNAL_LABELS[s.type] ?? s.type}
           </span>
         ))}
+      </div>
+      <div className="mt-auto flex flex-wrap gap-1 border-t border-unsw-navy/5 pt-2">
+        {alumni.emailConsent && <GuardrailBadge label="Email consent" />}
+        {alumni.smsConsent && <GuardrailBadge label="SMS consent" />}
+        <GuardrailBadge label="PII scoped" />
       </div>
     </button>
   );
