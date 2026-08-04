@@ -492,8 +492,15 @@ const CITIES: CityCatalog[] = [
   { city: 'Adelaide', state: 'SA', sydneyMetro: false },
   { city: 'Canberra', state: 'ACT', sydneyMetro: false },
   { city: 'Hobart', state: 'TAS', sydneyMetro: false },
+  // Regional NSW — broadened so the "regional NSW" filter isn't a wasteland.
+  { city: 'Newcastle', state: 'NSW', sydneyMetro: false },
   { city: 'Newcastle', state: 'NSW', sydneyMetro: false },
   { city: 'Wollongong', state: 'NSW', sydneyMetro: false },
+  { city: 'Wollongong', state: 'NSW', sydneyMetro: false },
+  { city: 'Central Coast', state: 'NSW', sydneyMetro: false },
+  { city: 'Byron Bay', state: 'NSW', sydneyMetro: false },
+  { city: 'Wagga Wagga', state: 'NSW', sydneyMetro: false },
+  { city: 'Coffs Harbour', state: 'NSW', sydneyMetro: false },
 ];
 
 const CONSENTS = ['Email + SMS', 'Email', 'Email', 'Email + SMS', 'Email'];
@@ -831,7 +838,7 @@ const PREMIUM: SegmentSampleRow[] = [
   },
 ];
 
-const GENERATED_COUNT = 900;
+const GENERATED_COUNT = 1600;
 const GENERATED: SegmentSampleRow[] = Array.from({ length: GENERATED_COUNT }, (_, i) =>
   makeGenerated(15 + i),
 );
