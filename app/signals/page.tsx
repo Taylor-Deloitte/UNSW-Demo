@@ -11,14 +11,16 @@ import {
   bestCourseFit,
   type SignalsQuery,
 } from '../../lib/tab-data/signals-fixture';
-import { SEGMENTS_SAMPLE, type SegmentSampleRow } from '../../lib/tab-data/segments-sample';
+import {
+  SEGMENTS_SAMPLE,
+  daysSince,
+  formatMonthYear,
+  formatWhen,
+  type SegmentSampleRow,
+} from '../../lib/tab-data/segments-sample';
 import { useServerTool } from '../../hooks/useServerTool';
 
-const CHIPS = [
-  { name: 'query_aep' },
-  { name: 'query_dynamics' },
-  { name: 'run_propensity_model' },
-];
+const CHIPS = [{ name: 'query_aep' }, { name: 'query_dynamics' }, { name: 'run_propensity_model' }];
 
 export default function SignalsPage() {
   const [q, setQ] = useState<SignalsQuery>(DEFAULT_SIGNALS_QUERY);
@@ -105,11 +107,17 @@ function filterAndRank(q: SignalsQuery): SegmentSampleRow[] {
         : q.scope === 'role-change'
           ? 'role-change'
           : 'redundancy';
-  const filtered = need
-    ? SEGMENTS_SAMPLE.filter((r) => r.signals.includes(need as SegmentSampleRow['signals'][number]))
-    : SEGMENTS_SAMPLE;
+  const windowDays = q.window === '7d' ? 7 : q.window === '30d' ? 30 : 90;
+  const filtered = SEGMENTS_SAMPLE.filter((r) => {
+    if (daysSince(r.eventDate) > windowDays) return false;
+    if (need && !r.signals.includes(need as SegmentSampleRow['signals'][number])) return false;
+    return true;
+  });
   if (q.rank === 'course-value') {
     return [...filtered].sort((a, b) => a.grad - b.grad);
+  }
+  if (q.rank === 'recency') {
+    return [...filtered].sort((a, b) => daysSince(a.eventDate) - daysSince(b.eventDate));
   }
   return [...filtered].sort((a, b) => b.score - a.score);
 }
@@ -156,7 +164,15 @@ function MetricStrip({ cells }: { cells: Array<{ label: string; value: string }>
 }
 
 function FeedTable({ rows }: { rows: SegmentSampleRow[] }) {
-  const cols = ['When', 'Alumnus', 'What happened', 'Location', 'Last course', 'Best course fit', 'Confidence'];
+  const cols = [
+    'When',
+    'Alumnus',
+    'What happened',
+    'Location',
+    'Last course',
+    'Best course fit',
+    'Confidence',
+  ];
   return (
     <div className="flex-1 overflow-auto">
       <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: 14 }}>
@@ -197,7 +213,7 @@ function FeedTable({ rows }: { rows: SegmentSampleRow[] }) {
                 className="text-muted"
                 style={{ padding: '11px 12px 11px 36px', whiteSpace: 'nowrap' }}
               >
-                {row.when}
+                {formatWhen(row.eventDate)}
               </td>
               <td style={{ padding: '11px 12px', fontWeight: 700, whiteSpace: 'nowrap' }}>
                 {row.name}
@@ -207,7 +223,7 @@ function FeedTable({ rows }: { rows: SegmentSampleRow[] }) {
                 {row.city}
               </td>
               <td className="text-muted" style={{ padding: '11px 12px' }}>
-                {row.lastCourse}
+                {formatMonthYear(row.lastCourseDate)}
               </td>
               <td className="text-muted" style={{ padding: '11px 12px' }}>
                 {bestCourseFit(row.industry)}

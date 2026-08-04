@@ -17,7 +17,31 @@ import { openPayloadTab } from '../../lib/handoff/open-payload';
 
 const CHIPS = [{ name: 'query_ajo' }, { name: 'compare_cohorts' }];
 
-const MONTHS = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
+const MONTH_ABBR = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+/** Last 12 months ending with the most recent completed month, oldest-first. */
+function last12Months(): string[] {
+  const now = new Date();
+  const out: string[] = [];
+  for (let i = 12; i >= 1; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push(MONTH_ABBR[d.getMonth()]);
+  }
+  return out;
+}
+const MONTHS = last12Months();
 
 export default function CohortsPage() {
   const [q, setQ] = useState<CohortsQuery>(DEFAULT_COHORTS_QUERY);
@@ -76,8 +100,7 @@ function HeadlineRow({
   q: CohortsQuery;
 }) {
   const trend = a.deltaQ1 < 0 ? `down ${Math.abs(a.deltaQ1)}%` : `up ${a.deltaQ1}%`;
-  const openAbTest = () =>
-    openPayloadTab(`AJO A/B test · ${a.label}`, buildAbTestPayload(a, b, q));
+  const openAbTest = () => openPayloadTab(`AJO A/B test · ${a.label}`, buildAbTestPayload(a, b, q));
   const openRevert = () =>
     openPayloadTab(`AJO cadence revert · ${a.label}`, buildRevertPayload(a, q));
 
@@ -220,10 +243,7 @@ function ChartColumn({
         <polyline points={points(b.series)} fill="none" stroke="#c8c8c8" strokeWidth={2} />
         <polyline points={points(a.series)} fill="none" stroke="#000" strokeWidth={3} />
       </svg>
-      <div
-        className="flex justify-between text-muted"
-        style={{ fontSize: 12, marginTop: 6 }}
-      >
+      <div className="flex justify-between text-muted" style={{ fontSize: 12, marginTop: 6 }}>
         {MONTHS.map((m) => (
           <span key={m}>{m}</span>
         ))}
@@ -254,7 +274,12 @@ function FindingsColumn({
       <div>
         <div
           className="text-ink"
-          style={{ fontSize: 16, fontWeight: 700, borderBottom: '2px solid #000', paddingBottom: 8 }}
+          style={{
+            fontSize: 16,
+            fontWeight: 700,
+            borderBottom: '2px solid #000',
+            paddingBottom: 8,
+          }}
         >
           What the agent found
         </div>
@@ -321,13 +346,23 @@ function FindingsColumn({
       <div className="flex" style={{ gap: 8, marginTop: 'auto' }}>
         <span
           className="font-mono bg-paper"
-          style={{ border: '1px solid #1ac987', color: '#0d7a54', fontSize: 11, padding: '2px 8px' }}
+          style={{
+            border: '1px solid #1ac987',
+            color: '#0d7a54',
+            fontSize: 11,
+            padding: '2px 8px',
+          }}
         >
           query_ajo ✓
         </span>
         <span
           className="font-mono bg-paper"
-          style={{ border: '1px solid #1ac987', color: '#0d7a54', fontSize: 11, padding: '2px 8px' }}
+          style={{
+            border: '1px solid #1ac987',
+            color: '#0d7a54',
+            fontSize: 11,
+            padding: '2px 8px',
+          }}
         >
           compare_cohorts ✓
         </span>
