@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { QueryBand, QueryStatic, QueryToken, AddConditionStub } from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import {
@@ -229,22 +229,26 @@ function OutlineButton({
   );
 }
 
+const PAGE_SIZE = 20;
+
 function ResultTable({ rows }: { rows: SegmentSampleRow[] }) {
+  const [page, setPage] = useState(0);
+
+  useEffect(() => setPage(0), [rows]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const pageRows = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const from = rows.length === 0 ? 0 : page * PAGE_SIZE + 1;
+  const to = Math.min((page + 1) * PAGE_SIZE, rows.length);
+
+  const cols = ['Name', 'Current role', 'Employer', 'Location', 'Signals', 'Last course', 'Consent', 'Propensity'];
+
   return (
-    <div className="overflow-auto" style={{ maxHeight: 760 }}>
+    <div className="flex flex-col">
       <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: 14 }}>
         <thead>
           <tr>
-            {[
-              'Name',
-              'Current role',
-              'Employer',
-              'Location',
-              'Signals',
-              'Last course',
-              'Consent',
-              'Propensity',
-            ].map((h, i) => (
+            {cols.map((h, i) => (
               <th
                 key={h}
                 className="uppercase text-muted"
@@ -276,7 +280,7 @@ function ResultTable({ rows }: { rows: SegmentSampleRow[] }) {
               </td>
             </tr>
           )}
-          {rows.map((row) => (
+          {pageRows.map((row) => (
             <tr
               key={row.id}
               className="cursor-pointer hover:bg-mist"
@@ -316,6 +320,66 @@ function ResultTable({ rows }: { rows: SegmentSampleRow[] }) {
           ))}
         </tbody>
       </table>
+      {totalPages > 1 && (
+        <Pagination
+          from={from}
+          to={to}
+          total={rows.length}
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage((p) => p - 1)}
+          onNext={() => setPage((p) => p + 1)}
+        />
+      )}
+    </div>
+  );
+}
+
+function Pagination({
+  from,
+  to,
+  total,
+  page,
+  totalPages,
+  onPrev,
+  onNext,
+}: {
+  from: number;
+  to: number;
+  total: number;
+  page: number;
+  totalPages: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div
+      className="flex flex-none items-center justify-between bg-paper"
+      style={{ padding: '10px 36px', borderTop: '1px solid #e0e0e0' }}
+    >
+      <span className="text-muted" style={{ fontSize: 13 }}>
+        {from}–{to} of {total.toLocaleString()}
+      </span>
+      <div className="flex" style={{ gap: 8 }}>
+        <button
+          type="button"
+          onClick={onPrev}
+          disabled={page === 0}
+          className="text-ink disabled:text-muted-soft"
+          style={{ border: '2px solid currentColor', fontSize: 13, fontWeight: 500, padding: '5px 14px' }}
+        >
+          ← Prev
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={page >= totalPages - 1}
+          className="text-ink disabled:text-muted-soft"
+          style={{ border: '2px solid currentColor', fontSize: 13, fontWeight: 500, padding: '5px 14px' }}
+        >
+          Next →
+        </button>
+      </div>
     </div>
   );
 }
