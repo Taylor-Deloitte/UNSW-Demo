@@ -231,7 +231,7 @@ function OutlineButton({
 
 function ResultTable({ rows }: { rows: SegmentSampleRow[] }) {
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="overflow-auto" style={{ maxHeight: 760 }}>
       <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: 14 }}>
         <thead>
           <tr>
