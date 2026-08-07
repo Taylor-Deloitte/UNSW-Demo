@@ -5,6 +5,7 @@ import { QueryBand, QueryStatic, QueryToken, AddConditionStub } from '../../comp
 import { ToolFooter } from '../../components/ToolFooter';
 import {
   DEFAULT_SEGMENTS_QUERY,
+  matchCount,
   SEGMENTS_TOKEN_OPTIONS,
   type SegmentsQuery,
 } from '../../lib/tab-data/segments-fixture';
@@ -16,7 +17,7 @@ import {
 } from '../../lib/tab-data/segments-sample';
 import { useServerTool } from '../../hooks/useServerTool';
 import { openPayloadTab } from '../../lib/handoff/open-payload';
-import { buildAepPayload, buildAjoPayload } from '../../lib/handoff/payloads';
+import { buildAjoPayload, buildLookalikesPayload } from '../../lib/handoff/payloads';
 
 const CHIPS = [
   { name: 'query_dynamics' },
@@ -30,7 +31,7 @@ export default function SegmentsPage() {
   const { call } = useServerTool();
 
   const rows = useMemo(() => filterSample(q), [q]);
-  const count = rows.length;
+  const count = matchCount(q);
   const emailConsentCount = Math.round(count * 0.87);
 
   // Fire real MCP tool calls in the background on token change.
@@ -48,17 +49,17 @@ export default function SegmentsPage() {
     }).catch(() => {});
   }, [q, call]);
 
-  const onSaveToAep = () => {
-    openPayloadTab(
-      `AEP segment · ${label('study', q.study)} · ${label('signal', q.signal)}`,
-      buildAepPayload({ source: 'segments', query: q, audienceSize: count, rows }),
-    );
-  };
-
   const onDraftAjo = () => {
     openPayloadTab(
       `AJO campaign · ${label('study', q.study)} · ${label('signal', q.signal)}`,
       buildAjoPayload({ source: 'segments', query: q, audienceSize: count, rows }),
+    );
+  };
+
+  const onFindLookalikes = () => {
+    openPayloadTab(
+      `Lookalike model · ${label('study', q.study)} · ${label('signal', q.signal)}`,
+      buildLookalikesPayload({ source: 'segments', query: q, seedAudienceSize: count }),
     );
   };
 
@@ -105,13 +106,13 @@ export default function SegmentsPage() {
       <ResultHeader
         count={count}
         emailConsentCount={emailConsentCount}
-        onSaveToAep={onSaveToAep}
         onDraftAjo={onDraftAjo}
+        onFindLookalikes={onFindLookalikes}
       />
 
       <ResultTable rows={rows} />
 
-      <ToolFooter chips={CHIPS} onToggleAudit={() => {}} auditOpen={false} auditCount={0} />
+      <ToolFooter chips={CHIPS} />
     </div>
   );
 }
@@ -163,13 +164,13 @@ function filterSample(q: SegmentsQuery): SegmentSampleRow[] {
 function ResultHeader({
   count,
   emailConsentCount,
-  onSaveToAep,
   onDraftAjo,
+  onFindLookalikes,
 }: {
   count: number;
   emailConsentCount: number;
-  onSaveToAep: () => void;
   onDraftAjo: () => void;
+  onFindLookalikes: () => void;
 }) {
   return (
     <div
@@ -189,8 +190,8 @@ function ResultHeader({
         </div>
       </div>
       <div className="flex" style={{ gap: 10 }}>
-        <OutlineButton onClick={onSaveToAep}>Save to AEP</OutlineButton>
         <OutlineButton onClick={onDraftAjo}>Draft AJO campaign</OutlineButton>
+        <OutlineButton onClick={onFindLookalikes}>Find lookalikes</OutlineButton>
         <OutlineButton href="/forecast">Forecast this segment</OutlineButton>
       </div>
     </div>

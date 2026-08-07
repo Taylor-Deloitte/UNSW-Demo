@@ -93,7 +93,7 @@ export default function SignalsPage() {
 
       <FeedTable rows={rows} />
 
-      <ToolFooter chips={CHIPS} onToggleAudit={() => {}} auditOpen={false} auditCount={0} />
+      <ToolFooter chips={CHIPS} />
     </div>
   );
 }

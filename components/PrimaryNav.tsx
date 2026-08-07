@@ -4,10 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { brand, tabs } from '../lib/brand';
 
-export function PrimaryNav({ onToggleAudit }: { onToggleAudit: () => void }) {
+export function PrimaryNav() {
   const pathname = usePathname();
-  // onToggleAudit reserved for future re-add of the audit control; unused here.
-  void onToggleAudit;
 
   return (
     <nav
@@ -41,13 +39,18 @@ export function PrimaryNav({ onToggleAudit }: { onToggleAudit: () => void }) {
           })}
         </div>
       </div>
-      <Link
-        href="/segments"
-        className="bg-unsw-yellow text-ink transition-colors hover:bg-ink hover:text-unsw-yellow"
-        style={{ fontSize: 14, fontWeight: 700, padding: '9px 18px' }}
-      >
-        Save to AEP
-      </Link>
+      <div className="flex items-center" style={{ gap: 16 }}>
+        <span className="text-muted" style={{ fontSize: 14 }}>
+          Marketing Manager · Alumni Engagement
+        </span>
+        <Link
+          href="/segments"
+          className="bg-unsw-yellow text-ink transition-colors hover:bg-ink hover:text-unsw-yellow"
+          style={{ fontSize: 15, fontWeight: 700, padding: '11px 22px' }}
+        >
+          Save to AEP
+        </Link>
+      </div>
     </nav>
   );
 }

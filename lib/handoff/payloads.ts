@@ -223,6 +223,58 @@ export function buildAjoCampaignFromForecast(input: ForecastHandoffInput) {
   };
 }
 
+export interface LookalikesHandoffInput {
+  source: 'segments';
+  query: SegmentsQuery;
+  seedAudienceSize: number;
+}
+
+export function buildLookalikesPayload(input: LookalikesHandoffInput) {
+  const q = input.query;
+  return {
+    endpoint: 'https://platform.adobe.io/data/core/ups/lookalike/models',
+    method: 'POST',
+    headers: {
+      Authorization: '<bearer token from Adobe IMS>',
+      'x-api-key': '<AEP API key>',
+      'x-sandbox-name': 'unsw-marketing-prod',
+      'Content-Type': 'application/json',
+    },
+    body: {
+      name: `UNSW Online · ${labelFor('study', q.study)} · lookalikes`,
+      description: `Lookalike expansion from ${input.seedAudienceSize} seed alumni — ${labelFor('signal', q.signal)} in ${labelFor('window', q.window)}`,
+      seedSegment: {
+        estimatedSize: input.seedAudienceSize,
+        pql: buildPql(q),
+      },
+      expansionTarget: {
+        similarityThreshold: 0.75,
+        maxOutputSize: 5000,
+        features: [
+          'career_trajectory',
+          'field_of_study',
+          'industry',
+          'seniority_level',
+          'engagement_history',
+          'propensity_score',
+        ],
+      },
+      outputSegment: {
+        name: `UNSW Online · ${labelFor('study', q.study)} · lookalikes`,
+        tags: ['unsw-online', 'lookalike', labelFor('study', q.study).toLowerCase()],
+      },
+      metadata: {
+        createdBy: 'Marketing Intelligence agent · MI 0.1',
+        governedByPolicy: 'UNSW policy v1.2',
+        source: 'agent',
+        seedQuery: q,
+        createdAt: isoNow(),
+        idempotencyKey: fauxId('idem'),
+      },
+    },
+  };
+}
+
 function buildPql(q: SegmentsQuery): string {
   const parts: string[] = [];
   if (q.study !== 'any') {

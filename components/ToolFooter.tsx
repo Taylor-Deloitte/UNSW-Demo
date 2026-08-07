@@ -1,21 +1,14 @@
 'use client';
 
+import { useAudit } from './AuditContext';
+
 export interface ToolChip {
   name: string;
   status?: 'ok' | 'error';
 }
 
-export function ToolFooter({
-  chips,
-  onToggleAudit,
-  auditOpen,
-  auditCount,
-}: {
-  chips: ToolChip[];
-  onToggleAudit: () => void;
-  auditOpen: boolean;
-  auditCount: number;
-}) {
+export function ToolFooter({ chips }: { chips: ToolChip[] }) {
+  const { open, count, toggle } = useAudit();
   return (
     <div
       className="flex flex-none items-center justify-between bg-mist"
@@ -50,11 +43,11 @@ export function ToolFooter({
       </div>
       <button
         type="button"
-        onClick={onToggleAudit}
+        onClick={toggle}
         className="text-muted"
         style={{ fontSize: 13, borderBottom: '1px solid #8f9296' }}
       >
-        {auditOpen ? 'Hide the audit log' : `Show the audit log · ${auditCount} events`}
+        {open ? 'Hide the audit log' : `Show the audit log · ${count} events`}
       </button>
     </div>
   );

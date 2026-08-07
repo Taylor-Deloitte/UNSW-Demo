@@ -177,7 +177,7 @@ export default function ForecastPage() {
         />
       </div>
 
-      <ToolFooter chips={CHIPS} onToggleAudit={() => {}} auditOpen={false} auditCount={0} />
+      <ToolFooter chips={CHIPS} />
     </div>
   );
 }

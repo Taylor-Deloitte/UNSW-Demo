@@ -83,7 +83,7 @@ export default function CohortsPage() {
         <FindingsColumn a={a} b={b} />
       </div>
 
-      <ToolFooter chips={CHIPS} onToggleAudit={() => {}} auditOpen={false} auditCount={0} />
+      <ToolFooter chips={CHIPS} />
     </div>
   );
 }
