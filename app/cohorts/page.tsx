@@ -13,7 +13,7 @@ import {
   type CohortRow,
   type CohortsQuery,
 } from '../../lib/tab-data/cohorts-fixture';
-import { openPayloadTab } from '../../lib/handoff/open-payload';
+import { usePayload } from '../../components/PayloadContext';
 
 const CHIPS = [{ name: 'query_ajo' }, { name: 'compare_cohorts' }];
 
@@ -99,10 +99,10 @@ function HeadlineRow({
   windowLabel: string;
   q: CohortsQuery;
 }) {
+  const { show } = usePayload();
   const trend = a.deltaQ1 < 0 ? `down ${Math.abs(a.deltaQ1)}%` : `up ${a.deltaQ1}%`;
-  const openAbTest = () => openPayloadTab(`AJO A/B test · ${a.label}`, buildAbTestPayload(a, b, q));
-  const openRevert = () =>
-    openPayloadTab(`AJO cadence revert · ${a.label}`, buildRevertPayload(a, q));
+  const openAbTest = () => show(`AJO A/B test · ${a.label}`, buildAbTestPayload(a, b, q));
+  const openRevert = () => show(`AJO cadence revert · ${a.label}`, buildRevertPayload(a, q));
 
   return (
     <div

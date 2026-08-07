@@ -5,7 +5,7 @@ import { QueryBand, QueryStatic, QueryToken } from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import { computeForecast } from '../../lib/tab-data/forecast';
 import { paybackMonth } from '../../lib/tab-data/forecast-payback';
-import { openPayloadTab } from '../../lib/handoff/open-payload';
+import { usePayload } from '../../components/PayloadContext';
 import {
   buildAjoCampaignFromForecast,
   buildForecastBriefPayload,
@@ -74,6 +74,7 @@ const AUD_LARGE = new Intl.NumberFormat('en-AU', {
 
 export default function ForecastPage() {
   const [q, setQ] = useState<FcQuery>(DEFAULT_FC);
+  const { show } = usePayload();
 
   const segment = SEGMENT_OPTIONS.find((s) => s.value === q.segment) ?? SEGMENT_OPTIONS[0];
   const upliftPct = Number(q.uplift);
@@ -143,7 +144,7 @@ export default function ForecastPage() {
           onApply={(patch) => setQ({ ...q, ...patch })}
           assumptions={result.assumptions}
           onExportBrief={() =>
-            openPayloadTab(
+            show(
               `Campaign brief · ${segment.label}`,
               buildForecastBriefPayload({
                 segmentLabel: segment.label,
@@ -159,7 +160,7 @@ export default function ForecastPage() {
             )
           }
           onDraftAjoCampaign={() =>
-            openPayloadTab(
+            show(
               `AJO campaign · ${segment.label}`,
               buildAjoCampaignFromForecast({
                 segmentLabel: segment.label,

@@ -4,11 +4,14 @@ import { type ReactNode } from 'react';
 import { PrimaryNav } from './PrimaryNav';
 import { AuditDrawer } from './AuditDrawer';
 import { AuditProvider, useAudit } from './AuditContext';
+import { PayloadProvider } from './PayloadContext';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <AuditProvider>
-      <AppShellInner>{children}</AppShellInner>
+      <PayloadProvider>
+        <AppShellInner>{children}</AppShellInner>
+      </PayloadProvider>
     </AuditProvider>
   );
 }

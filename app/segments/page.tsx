@@ -16,7 +16,7 @@ import {
   type SegmentSampleRow,
 } from '../../lib/tab-data/segments-sample';
 import { useServerTool } from '../../hooks/useServerTool';
-import { openPayloadTab } from '../../lib/handoff/open-payload';
+import { usePayload } from '../../components/PayloadContext';
 import { buildAjoPayload, buildLookalikesPayload } from '../../lib/handoff/payloads';
 
 const CHIPS = [
@@ -29,6 +29,7 @@ const CHIPS = [
 export default function SegmentsPage() {
   const [q, setQ] = useState<SegmentsQuery>(DEFAULT_SEGMENTS_QUERY);
   const { call } = useServerTool();
+  const { show } = usePayload();
 
   const rows = useMemo(() => filterSample(q), [q]);
   const count = matchCount(q);
@@ -50,14 +51,14 @@ export default function SegmentsPage() {
   }, [q, call]);
 
   const onDraftAjo = () => {
-    openPayloadTab(
+    show(
       `AJO campaign · ${label('study', q.study)} · ${label('signal', q.signal)}`,
       buildAjoPayload({ source: 'segments', query: q, audienceSize: count, rows }),
     );
   };
 
   const onFindLookalikes = () => {
-    openPayloadTab(
+    show(
       `Lookalike model · ${label('study', q.study)} · ${label('signal', q.signal)}`,
       buildLookalikesPayload({ source: 'segments', query: q, seedAudienceSize: count }),
     );
