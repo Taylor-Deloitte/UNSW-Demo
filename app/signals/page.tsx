@@ -1,7 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { QueryBand, QueryStatic, QueryToken, AddConditionStub } from '../../components/QueryBand';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  QueryBand,
+  QueryStatic,
+  QueryToken,
+  AddConditionStub,
+  RemoveConditionButton,
+} from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import {
   DEFAULT_SIGNALS_QUERY,
@@ -22,12 +28,58 @@ import { useServerTool } from '../../hooks/useServerTool';
 
 const CHIPS = [{ name: 'query_aep' }, { name: 'query_dynamics' }, { name: 'run_propensity_model' }];
 
+const EXTRA_CONDITION_DEFS = {
+  industry: {
+    label: 'Industry',
+    prefix: ', in',
+    defaultValue: 'Technology',
+    options: [
+      { value: 'Technology', label: 'Technology' },
+      { value: 'Financial Services', label: 'Financial Services' },
+      { value: 'Healthcare', label: 'Healthcare' },
+      { value: 'Government', label: 'Government' },
+      { value: 'Education', label: 'Education' },
+      { value: 'Consulting', label: 'Consulting' },
+    ],
+  },
+  state: {
+    label: 'State',
+    prefix: ', based in',
+    defaultValue: 'NSW',
+    options: [
+      { value: 'NSW', label: 'New South Wales' },
+      { value: 'VIC', label: 'Victoria' },
+      { value: 'QLD', label: 'Queensland' },
+      { value: 'WA', label: 'Western Australia' },
+      { value: 'SA', label: 'South Australia' },
+    ],
+  },
+} as const;
+
+type ExtraConditionType = keyof typeof EXTRA_CONDITION_DEFS;
+interface ExtraCondition { type: ExtraConditionType; value: string }
+
 export default function SignalsPage() {
   const [q, setQ] = useState<SignalsQuery>(DEFAULT_SIGNALS_QUERY);
+  const [extras, setExtras] = useState<ExtraCondition[]>([]);
   const { call } = useServerTool();
 
   const { momentsTotal, momentsUnactioned } = deriveSignalCounts(q);
-  const rows = useMemo(() => filterAndRank(q), [q]);
+  const rows = useMemo(() => filterAndRank(q, extras), [q, extras]);
+
+  const addExtra = (type: string) => {
+    const t = type as ExtraConditionType;
+    if (extras.some((e) => e.type === t)) return;
+    setExtras((prev) => [...prev, { type: t, value: EXTRA_CONDITION_DEFS[t].defaultValue }]);
+  };
+  const updateExtra = (type: ExtraConditionType, value: string) =>
+    setExtras((prev) => prev.map((e) => (e.type === type ? { ...e, value } : e)));
+  const removeExtra = (type: ExtraConditionType) =>
+    setExtras((prev) => prev.filter((e) => e.type !== type));
+
+  const availableConditions = (Object.keys(EXTRA_CONDITION_DEFS) as ExtraConditionType[])
+    .filter((t) => !extras.some((e) => e.type === t))
+    .map((t) => ({ type: t, label: `Add ${EXTRA_CONDITION_DEFS[t].label.toLowerCase()} filter` }));
 
   // Background tool calls on token change — feeds the audit log.
   useEffect(() => {
@@ -77,7 +129,19 @@ export default function SignalsPage() {
           options={[...SIGNALS_TOKEN_OPTIONS.rank]}
           minWidth={200}
         />
-        <AddConditionStub />
+        {extras.map((c) => (
+          <Fragment key={c.type}>
+            <QueryStatic>{EXTRA_CONDITION_DEFS[c.type].prefix}</QueryStatic>
+            <QueryToken
+              value={c.value}
+              options={[...EXTRA_CONDITION_DEFS[c.type].options]}
+              onChange={(v) => updateExtra(c.type, v)}
+              minWidth={200}
+            />
+            <RemoveConditionButton onClick={() => removeExtra(c.type)} />
+          </Fragment>
+        ))}
+        <AddConditionStub available={availableConditions} onAdd={addExtra} />
       </QueryBand>
 
       <MetricStrip
@@ -98,7 +162,7 @@ export default function SignalsPage() {
   );
 }
 
-function filterAndRank(q: SignalsQuery): SegmentSampleRow[] {
+function filterAndRank(q: SignalsQuery, extras: ExtraCondition[] = []): SegmentSampleRow[] {
   const need =
     q.scope === 'all'
       ? null
@@ -111,6 +175,10 @@ function filterAndRank(q: SignalsQuery): SegmentSampleRow[] {
   const filtered = SEGMENTS_SAMPLE.filter((r) => {
     if (daysSince(r.eventDate) > windowDays) return false;
     if (need && !r.signals.includes(need as SegmentSampleRow['signals'][number])) return false;
+    for (const c of extras) {
+      if (c.type === 'industry' && r.industry !== c.value) return false;
+      if (c.type === 'state' && r.state !== c.value) return false;
+    }
     return true;
   });
   if (q.rank === 'course-value') {

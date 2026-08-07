@@ -121,18 +121,92 @@ export function QueryToken({
   );
 }
 
-/** Dashed "+ add a condition" stub. Not wired. */
-export function AddConditionStub() {
+/** Small × button to remove an added condition. */
+export function RemoveConditionButton({ onClick }: { onClick: () => void }) {
   return (
-    <span
-      className="cursor-pointer text-muted-soft hover:border-ink hover:text-ink"
-      style={{
-        border: '1.5px dashed #8f9296',
-        padding: '4px 12px',
-        fontSize: 18,
-      }}
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-muted-soft hover:text-ink"
+      aria-label="Remove condition"
+      style={{ fontSize: 16, lineHeight: 1, padding: '0 2px' }}
     >
-      + add a condition
+      ×
+    </button>
+  );
+}
+
+/**
+ * "+ add a condition" affordance.
+ * When `available` is non-empty, clicking opens a picker menu.
+ * When all condition types are already added, renders nothing.
+ */
+export function AddConditionStub({
+  available = [],
+  onAdd,
+}: {
+  available?: Array<{ type: string; label: string }>;
+  onAdd?: (type: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickAway(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickAway);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickAway);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [open]);
+
+  if (!available.length) return null;
+
+  return (
+    <span ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="cursor-pointer text-muted-soft hover:border-ink hover:text-ink"
+        style={{ border: '1.5px dashed #8f9296', padding: '4px 12px', fontSize: 18 }}
+      >
+        + add a condition
+      </button>
+      {open && (
+        <div
+          className="absolute bg-paper"
+          style={{
+            top: '100%',
+            left: 0,
+            zIndex: 30,
+            border: '2px solid #000',
+            boxShadow: '0 12px 28px rgba(0,0,0,0.18)',
+            minWidth: 220,
+          }}
+        >
+          {available.map((opt) => (
+            <button
+              key={opt.type}
+              type="button"
+              onClick={() => {
+                onAdd?.(opt.type);
+                setOpen(false);
+              }}
+              className="block w-full cursor-pointer text-left hover:bg-mist"
+              style={{ padding: '10px 14px', fontSize: 15 }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
     </span>
   );
 }

@@ -1,7 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { QueryBand, QueryStatic, QueryToken, AddConditionStub } from '../../components/QueryBand';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  QueryBand,
+  QueryStatic,
+  QueryToken,
+  AddConditionStub,
+  RemoveConditionButton,
+} from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import {
   DEFAULT_SEGMENTS_QUERY,
@@ -26,12 +32,44 @@ const CHIPS = [
   { name: 'run_propensity_model' },
 ];
 
+const EXTRA_CONDITION_DEFS = {
+  industry: {
+    label: 'Industry',
+    prefix: ', in',
+    defaultValue: 'Technology',
+    options: [
+      { value: 'Technology', label: 'Technology' },
+      { value: 'Financial Services', label: 'Financial Services' },
+      { value: 'Healthcare', label: 'Healthcare' },
+      { value: 'Government', label: 'Government' },
+      { value: 'Education', label: 'Education' },
+      { value: 'Consulting', label: 'Consulting' },
+    ],
+  },
+  state: {
+    label: 'State',
+    prefix: ', based in',
+    defaultValue: 'NSW',
+    options: [
+      { value: 'NSW', label: 'New South Wales' },
+      { value: 'VIC', label: 'Victoria' },
+      { value: 'QLD', label: 'Queensland' },
+      { value: 'WA', label: 'Western Australia' },
+      { value: 'SA', label: 'South Australia' },
+    ],
+  },
+} as const;
+
+type ExtraConditionType = keyof typeof EXTRA_CONDITION_DEFS;
+interface ExtraCondition { type: ExtraConditionType; value: string }
+
 export default function SegmentsPage() {
   const [q, setQ] = useState<SegmentsQuery>(DEFAULT_SEGMENTS_QUERY);
+  const [extras, setExtras] = useState<ExtraCondition[]>([]);
   const { call } = useServerTool();
   const { show } = usePayload();
 
-  const rows = useMemo(() => filterSample(q), [q]);
+  const rows = useMemo(() => filterSample(q, extras), [q, extras]);
   const count = matchCount(q);
   const emailConsentCount = Math.round(count * 0.87);
 
@@ -49,6 +87,20 @@ export default function SegmentsPage() {
       topN: 10,
     }).catch(() => {});
   }, [q, call]);
+
+  const addExtra = (type: string) => {
+    const t = type as ExtraConditionType;
+    if (extras.some((e) => e.type === t)) return;
+    setExtras((prev) => [...prev, { type: t, value: EXTRA_CONDITION_DEFS[t].defaultValue }]);
+  };
+  const updateExtra = (type: ExtraConditionType, value: string) =>
+    setExtras((prev) => prev.map((e) => (e.type === type ? { ...e, value } : e)));
+  const removeExtra = (type: ExtraConditionType) =>
+    setExtras((prev) => prev.filter((e) => e.type !== type));
+
+  const availableConditions = (Object.keys(EXTRA_CONDITION_DEFS) as ExtraConditionType[])
+    .filter((t) => !extras.some((e) => e.type === t))
+    .map((t) => ({ type: t, label: `Add ${EXTRA_CONDITION_DEFS[t].label.toLowerCase()} filter` }));
 
   const onDraftAjo = () => {
     show(
@@ -101,7 +153,19 @@ export default function SegmentsPage() {
           options={[...SEGMENTS_TOKEN_OPTIONS.gap]}
           minWidth={200}
         />
-        <AddConditionStub />
+        {extras.map((c) => (
+          <Fragment key={c.type}>
+            <QueryStatic>{EXTRA_CONDITION_DEFS[c.type].prefix}</QueryStatic>
+            <QueryToken
+              value={c.value}
+              options={[...EXTRA_CONDITION_DEFS[c.type].options]}
+              onChange={(v) => updateExtra(c.type, v)}
+              minWidth={200}
+            />
+            <RemoveConditionButton onClick={() => removeExtra(c.type)} />
+          </Fragment>
+        ))}
+        <AddConditionStub available={availableConditions} onAdd={addExtra} />
       </QueryBand>
 
       <ResultHeader
@@ -140,7 +204,7 @@ function mapQueryToAepCriteria(q: SegmentsQuery) {
   return { industries, states, hasRecentSignal: true };
 }
 
-function filterSample(q: SegmentsQuery): SegmentSampleRow[] {
+function filterSample(q: SegmentsQuery, extras: ExtraCondition[] = []): SegmentSampleRow[] {
   const windowDays = q.window === '6m' ? 183 : q.window === '12m' ? 365 : 730;
   const gapDays = q.gap === '1y' ? 365 : q.gap === '3y' ? 3 * 365 : 5 * 365;
   return SEGMENTS_SAMPLE.filter((row) => {
@@ -158,6 +222,10 @@ function filterSample(q: SegmentsQuery): SegmentSampleRow[] {
     if (q.loc === 'regional-nsw' && !(row.state === 'NSW' && !row.sydneyMetro)) return false;
     if (daysSince(row.eventDate) > windowDays) return false;
     if (daysSince(row.lastCourseDate) < gapDays) return false;
+    for (const c of extras) {
+      if (c.type === 'industry' && row.industry !== c.value) return false;
+      if (c.type === 'state' && row.state !== c.value) return false;
+    }
     return true;
   });
 }
