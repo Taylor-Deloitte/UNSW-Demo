@@ -15,8 +15,8 @@ import {
   type MarketTrend,
   type Signal,
   type Window,
-} from '../../lib/tab-data/course-intelligence-fixture.js';
-import { buildCrmCampaignPayload } from '../../lib/handoff/payloads.js';
+} from '../../lib/tab-data/course-intelligence-fixture';
+import { buildCrmCampaignPayload } from '../../lib/handoff/payloads';
 
 const CHIPS = [
   { name: 'query_dynamics' },
