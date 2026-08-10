@@ -15,7 +15,7 @@ export function ChatOverlay() {
   const [steps, setSteps] = useState<readonly PresenterStep[]>([]);
   const presenterRef = useRef<PresenterHandle>(null);
   const sessionId = useSessionId();
-  const { enabled: voiceEnabled, toggle: toggleVoice, speak } = useVoice();
+  const voice = useVoice();
 
   const ask = useCallback(
     async (prompt: string) => {
@@ -24,16 +24,14 @@ export function ChatOverlay() {
       setOpen(true);
       setPinned(prompt);
       presenterRef.current?.reset(prompt);
-
-      // Collect full text for voice-over
-      let fullText = '';
+      voice.stop(); // clear any audio from the previous response
 
       try {
         await streamChat(prompt, sessionId, {
           onSpotlight: (target, tag) => presenterRef.current?.beginStep(target, tag),
           onText: (delta) => {
             presenterRef.current?.appendText(delta);
-            fullText += delta;
+            voice.onDelta(delta); // stream each chunk to ElevenLabs as it arrives
           },
           onToolCall: (name, input) =>
             presenterRef.current?.appendTool(`${name} · ${input.slice(0, 40)}`),
@@ -43,11 +41,10 @@ export function ChatOverlay() {
       } finally {
         presenterRef.current?.finish();
         setStreaming(false);
-        // Speak the full response after streaming completes
-        if (fullText.trim()) void speak(fullText);
+        voice.flush(); // speak any trailing text that didn't end with punctuation
       }
     },
-    [streaming, sessionId, speak],
+    [streaming, sessionId, voice],
   );
 
   return (
@@ -93,8 +90,8 @@ export function ChatOverlay() {
             pinnedQuestion={pinned}
             steps={steps}
             streaming={streaming}
-            voiceEnabled={voiceEnabled}
-            onToggleVoice={toggleVoice}
+            voiceEnabled={voice.enabled}
+            onToggleVoice={voice.toggle}
             onSubmit={ask}
             onClose={() => setOpen(false)}
           />
