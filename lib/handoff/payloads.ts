@@ -275,6 +275,48 @@ export function buildLookalikesPayload(input: LookalikesHandoffInput) {
   };
 }
 
+export interface CourseIntelligenceHandoffInput {
+  cohortLabel: string;
+  topCourseName: string;
+  topCourseCode: string;
+  matchedAlumni: number;
+  catalogueGaps: Array<{ title: string; potentialCohortSize: number }>;
+}
+
+export function buildCrmCampaignPayload(input: CourseIntelligenceHandoffInput) {
+  return {
+    endpoint: 'https://api.dynamics.com/v9.2/campaigns',
+    method: 'POST',
+    headers: {
+      Authorization: '<bearer token from Azure AD — fetched at runtime by the CRM connector>',
+      'Content-Type': 'application/json',
+      'OData-MaxVersion': '4.0',
+      'OData-Version': '4.0',
+    },
+    body: {
+      name: `UNSW Online · ${input.topCourseCode} · ${input.cohortLabel}`,
+      description: `Agent-drafted campaign — top opportunity from Course Intelligence. ${input.matchedAlumni.toLocaleString()} matched alumni with historical purchase signals.`,
+      typecode: 1,
+      statuscode: 0,
+      prospectscountbase: input.matchedAlumni,
+      subject: `${input.topCourseName} — right course, right moment for your career`,
+      customFields: {
+        unsw_source: 'marketing-intelligence-agent',
+        unsw_governed_by: 'UNSW policy v1.2',
+        unsw_cohort: input.cohortLabel,
+        unsw_top_course: input.topCourseCode,
+        unsw_catalogue_gap_titles: input.catalogueGaps.map((g) => g.title).join(', '),
+        unsw_created_at: isoNow(),
+        unsw_idempotency_key: fauxId('crm'),
+      },
+      meta: {
+        note: 'Dynamics is the lead master — AEP will be populated from Dynamics via the CRM→AEP integration.',
+        nextStep: 'Review in Dynamics, assign journey, then sync to AJO via the CRM-AEP connector.',
+      },
+    },
+  };
+}
+
 function buildPql(q: SegmentsQuery): string {
   const parts: string[] = [];
   if (q.study !== 'any') {
