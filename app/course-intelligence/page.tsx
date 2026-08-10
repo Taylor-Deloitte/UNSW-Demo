@@ -174,6 +174,7 @@ function AgentReasoningBand({
 }) {
   return (
     <div
+      id="ciReasoning"
       className="flex-none bg-ink"
       style={{ padding: '20px 36px', display: 'flex', flexDirection: 'column', gap: 14 }}
     >
@@ -234,7 +235,7 @@ function AgentReasoningBand({
 
 function RecommendationsColumn({ recommendations }: { recommendations: CourseRecommendation[] }) {
   return (
-    <div className="flex flex-1 flex-col" style={{ padding: '22px 30px 22px 36px' }}>
+    <div id="ciRecommendations" className="flex flex-1 flex-col" style={{ padding: '22px 30px 22px 36px' }}>
       <div
         className="text-ink"
         style={{

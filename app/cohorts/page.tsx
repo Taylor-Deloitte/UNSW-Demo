@@ -214,7 +214,7 @@ function ChartColumn({
       .join(' ');
 
   return (
-    <div className="flex flex-1 flex-col" style={{ padding: '22px 30px 22px 36px' }}>
+    <div id="cohortsChart" className="flex flex-1 flex-col" style={{ padding: '22px 30px 22px 36px' }}>
       <div className="flex items-center justify-between">
         <div className="text-ink" style={{ fontSize: 16, fontWeight: 700 }}>
           Engagement, rolling 30-day

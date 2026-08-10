@@ -21,3 +21,16 @@ body {
 * {
   border-radius: 0 !important;
 }
+
+/* Presenter animations */
+@keyframes tpulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.spot-w {
+  transition: opacity 0.5s ease, transform 0.5s ease, box-shadow 0.5s ease, filter 0.5s ease;
+}

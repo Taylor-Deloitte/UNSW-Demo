@@ -256,7 +256,7 @@ function FeedTable({ rows }: { rows: SegmentSampleRow[] }) {
   ];
 
   return (
-    <div ref={tableRef} className="flex flex-col">
+    <div id="signalsFeed" ref={tableRef} className="flex flex-col">
       <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: 14 }}>
         <thead>
           <tr>

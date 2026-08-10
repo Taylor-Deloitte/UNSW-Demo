@@ -5,6 +5,7 @@ import { PrimaryNav } from './PrimaryNav';
 import { AuditDrawer } from './AuditDrawer';
 import { AuditProvider, useAudit } from './AuditContext';
 import { PayloadProvider } from './PayloadContext';
+import { ChatOverlay } from './ChatOverlay';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -23,6 +24,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
       <PrimaryNav />
       <main className="flex flex-col">{children}</main>
       <AuditDrawer open={open} onClose={toggle} auditCount={count} />
+      <ChatOverlay />
     </div>
   );
 }

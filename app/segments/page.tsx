@@ -243,6 +243,7 @@ function ResultHeader({
 }) {
   return (
     <div
+      id="segmentsResult"
       className="flex flex-none items-end justify-between"
       style={{ padding: '18px 36px 14px', borderBottom: '1px solid #000' }}
     >
