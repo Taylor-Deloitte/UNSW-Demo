@@ -20,6 +20,7 @@ export interface PresenterProps {
   pinnedQuestion: string;
   streamOpen: boolean;
   visible: boolean;
+  hideText?: boolean; // present mode — voice reads text, card just shows spotlight progress
   onStepsChange?: (steps: readonly PresenterStep[]) => void;
 }
 
@@ -34,7 +35,7 @@ const INTRO_STEP: PresenterStep = {
 const bold = (s: string): string => s.replace(/\*\*(.+?)\*\*/g, '<b style="color:#000">$1</b>');
 
 export const Presenter = forwardRef<PresenterHandle, PresenterProps>(function Presenter(
-  { pinnedQuestion, streamOpen, visible, onStepsChange },
+  { pinnedQuestion, streamOpen, visible, hideText = false, onStepsChange },
   ref,
 ) {
   const [steps, setSteps] = useState<PresenterStep[]>([INTRO_STEP]);
@@ -278,7 +279,7 @@ export const Presenter = forwardRef<PresenterHandle, PresenterProps>(function Pr
 
       {/* Body */}
       <div style={{ minHeight: 64 }}>
-        {step.revealed && step.text.length > 0 ? (
+        {step.revealed && step.text.length > 0 && !hideText ? (
           <div style={{ animation: 'fadeUp .45s ease both' }}>
             {step.tag.length > 0 && (
               <div
