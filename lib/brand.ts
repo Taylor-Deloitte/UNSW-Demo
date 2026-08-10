@@ -7,5 +7,5 @@ export const tabs = [
   { href: '/signals', label: 'Signals' },
   { href: '/cohorts', label: 'Cohorts' },
   { href: '/segments', label: 'Segments' },
-  { href: '/forecast', label: 'Forecast' },
+  { href: '/course-intelligence', label: 'Course Intelligence' },
 ] as const;

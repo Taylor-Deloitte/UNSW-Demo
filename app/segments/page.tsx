@@ -261,7 +261,7 @@ function ResultHeader({
       <div className="flex" style={{ gap: 10 }}>
         <OutlineButton onClick={onDraftAjo}>Draft AJO campaign</OutlineButton>
         <OutlineButton onClick={onFindLookalikes}>Find lookalikes</OutlineButton>
-        <OutlineButton href="/forecast">Forecast this segment</OutlineButton>
+        <OutlineButton href="/course-intelligence">Course Intelligence</OutlineButton>
       </div>
     </div>
   );

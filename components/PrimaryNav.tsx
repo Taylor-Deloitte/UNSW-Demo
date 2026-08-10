@@ -48,7 +48,7 @@ export function PrimaryNav() {
           className="bg-unsw-yellow text-ink transition-colors hover:bg-ink hover:text-unsw-yellow"
           style={{ fontSize: 15, fontWeight: 700, padding: '11px 22px' }}
         >
-          Save to AEP
+          Push to CRM
         </Link>
       </div>
     </nav>
