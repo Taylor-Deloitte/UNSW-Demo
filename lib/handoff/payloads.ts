@@ -2,10 +2,7 @@ import type { SegmentsQuery } from '../tab-data/segments-fixture';
 import { SEGMENTS_TOKEN_OPTIONS } from '../tab-data/segments-fixture';
 import type { SegmentSampleRow } from '../tab-data/segments-sample';
 
-function labelFor<K extends keyof typeof SEGMENTS_TOKEN_OPTIONS>(
-  key: K,
-  value: string,
-): string {
+function labelFor<K extends keyof typeof SEGMENTS_TOKEN_OPTIONS>(key: K, value: string): string {
   const opt = SEGMENTS_TOKEN_OPTIONS[key].find((o) => o.value === value);
   return opt?.label ?? value;
 }
@@ -321,16 +318,16 @@ function buildPql(q: SegmentsQuery): string {
   const parts: string[] = [];
   if (q.study !== 'any') {
     const field =
-      q.study === 'cs'
-        ? 'Computer Science'
-        : q.study === 'eng'
-          ? 'Engineering'
-          : 'Commerce';
+      q.study === 'cs' ? 'Computer Science' : q.study === 'eng' ? 'Engineering' : 'Commerce';
     parts.push(`education.fieldOfStudy = "${field}"`);
   }
   if (q.signal !== 'any') {
     const sig =
-      q.signal === 'promoted' ? 'promoted' : q.signal === 'role-change' ? 'role_change' : 'redundancy_risk';
+      q.signal === 'promoted'
+        ? 'promoted'
+        : q.signal === 'role-change'
+          ? 'role_change'
+          : 'redundancy_risk';
     parts.push(`careerSignals.type = "${sig}"`);
     const withinDays = q.window === '6m' ? 180 : q.window === '12m' ? 365 : 730;
     parts.push(`careerSignals.detectedAt >= now() - ${withinDays}days`);

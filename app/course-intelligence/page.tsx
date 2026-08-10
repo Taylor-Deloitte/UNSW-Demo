@@ -232,11 +232,7 @@ function AgentReasoningBand({
   );
 }
 
-function RecommendationsColumn({
-  recommendations,
-}: {
-  recommendations: CourseRecommendation[];
-}) {
+function RecommendationsColumn({ recommendations }: { recommendations: CourseRecommendation[] }) {
   return (
     <div className="flex flex-1 flex-col" style={{ padding: '22px 30px 22px 36px' }}>
       <div
@@ -276,10 +272,7 @@ function RecommendationsColumn({
 
 function RecommendationRow({ rec }: { rec: CourseRecommendation }) {
   return (
-    <div
-      className="hover:bg-mist"
-      style={{ borderBottom: '1px solid #ededed', cursor: 'default' }}
-    >
+    <div className="hover:bg-mist" style={{ borderBottom: '1px solid #ededed', cursor: 'default' }}>
       <div className="flex items-start" style={{ padding: '14px 0' }}>
         <span
           className="text-muted"

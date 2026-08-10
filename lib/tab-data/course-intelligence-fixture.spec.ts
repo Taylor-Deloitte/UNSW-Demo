@@ -42,7 +42,9 @@ describe('getCourseIntelligence', () => {
 
   it('all cohorts returns valid opportunity scores', () => {
     const result = getCourseIntelligence('all', 'any', '24m');
-    expect(result.recommendations.every((r) => r.opportunityScore > 0 && r.opportunityScore <= 1)).toBe(true);
+    expect(
+      result.recommendations.every((r) => r.opportunityScore > 0 && r.opportunityScore <= 1),
+    ).toBe(true);
   });
 
   it('agent summary mentions the cohort label', () => {

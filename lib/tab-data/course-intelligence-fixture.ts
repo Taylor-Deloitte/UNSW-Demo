@@ -88,7 +88,8 @@ const CS_RECS: CourseRecommendation[] = [
     historicalConversionPct: 0.062,
     opportunityScore: 0.78,
     badge: 'trending',
-    rationale: '62 alumni transitioned to product roles. Role change is a strong predictor for PM uptake.',
+    rationale:
+      '62 alumni transitioned to product roles. Role change is a strong predictor for PM uptake.',
   },
   {
     rank: 3,
@@ -195,7 +196,8 @@ const COMMERCE_RECS: CourseRecommendation[] = [
     historicalConversionPct: 0.058,
     opportunityScore: 0.72,
     badge: null,
-    rationale: 'Data fluency is increasingly required across commercial, finance, and consulting roles.',
+    rationale:
+      'Data fluency is increasingly required across commercial, finance, and consulting roles.',
   },
   {
     rank: 3,
@@ -225,7 +227,8 @@ const COMMERCE_RECS: CourseRecommendation[] = [
     historicalConversionPct: 0.019,
     opportunityScore: 0.37,
     badge: null,
-    rationale: 'AI adoption in commercial roles is accelerating — currently underpenetrated in this cohort.',
+    rationale:
+      'AI adoption in commercial roles is accelerating — currently underpenetrated in this cohort.',
   },
 ];
 
@@ -238,7 +241,8 @@ const ALL_RECS: CourseRecommendation[] = [
     historicalConversionPct: 0.071,
     opportunityScore: 0.88,
     badge: 'trending',
-    rationale: 'Highest cross-cohort demand. Alumni who changed roles show 2.8× above-baseline conversion.',
+    rationale:
+      'Highest cross-cohort demand. Alumni who changed roles show 2.8× above-baseline conversion.',
   },
   {
     rank: 2,
@@ -345,7 +349,8 @@ export function getCourseIntelligence(
       {
         id: 2,
         label: 'Cross-referencing purchase history',
-        detail: 'Matching career transition patterns against 3-year course purchase history for similar profiles',
+        detail:
+          'Matching career transition patterns against 3-year course purchase history for similar profiles',
       },
       {
         id: 3,
