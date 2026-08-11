@@ -9,7 +9,7 @@ export function PrimaryNav() {
 
   return (
     <nav
-      className="sticky top-0 z-40 flex flex-none items-center justify-between bg-paper"
+      className="sticky top-0 z-40 flex flex-none items-center bg-paper"
       style={{ height: 70, padding: '0 36px', borderBottom: '1px solid #e0e0e0' }}
     >
       <div className="flex items-center" style={{ gap: 26 }}>
@@ -38,18 +38,6 @@ export function PrimaryNav() {
             );
           })}
         </div>
-      </div>
-      <div className="flex items-center" style={{ gap: 16 }}>
-        <span className="text-muted" style={{ fontSize: 14 }}>
-          Marketing Manager · Alumni Engagement
-        </span>
-        <Link
-          href="/segments"
-          className="bg-unsw-yellow text-ink transition-colors hover:bg-ink hover:text-unsw-yellow"
-          style={{ fontSize: 15, fontWeight: 700, padding: '11px 22px' }}
-        >
-          Push to CRM
-        </Link>
       </div>
     </nav>
   );
