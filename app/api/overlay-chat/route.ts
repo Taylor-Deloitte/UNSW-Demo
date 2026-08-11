@@ -28,20 +28,135 @@ const SPOTLIGHT_TOOL: Tool = {
   },
 };
 
+const BUILD_SEGMENT_TOOL: Tool = {
+  name: 'build_segment',
+  description:
+    'Build a targeted audience segment and CRM campaign draft for a course. Call this whenever the user asks to launch a campaign, target an audience, build a segment, or promote a new course. Infer audience parameters from the conversation — do not ask for clarification before calling.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      courseName: {
+        type: 'string',
+        description: 'Full name of the course to promote',
+      },
+      targetDescription: {
+        type: 'string',
+        description: 'Natural language summary of the target audience, e.g. "CS graduates promoted in the last 12 months"',
+      },
+      fieldsOfStudy: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Relevant degree fields, e.g. ["Computer Science", "Engineering"]',
+      },
+      careerSignal: {
+        type: 'string',
+        enum: ['promoted', 'role-change', 'redundancy', 'any'],
+        description: 'Career event to filter on',
+      },
+      estimatedSize: {
+        type: 'number',
+        description: 'Estimated matched audience size',
+      },
+      rationale: {
+        type: 'string',
+        description: 'One sentence explaining why this audience is a strong match for this course',
+      },
+    },
+    required: ['courseName', 'targetDescription', 'estimatedSize', 'rationale'],
+  },
+};
+
+interface BuildSegmentInput {
+  courseName: string;
+  targetDescription: string;
+  fieldsOfStudy?: string[];
+  careerSignal?: string;
+  estimatedSize: number;
+  rationale: string;
+}
+
+function buildSegmentPayload(input: BuildSegmentInput) {
+  const idempotencyKey = `seg-${Math.random().toString(36).slice(2, 10)}`;
+  const now = new Date().toISOString();
+  const emailConsent = Math.round(input.estimatedSize * 0.87);
+
+  return {
+    kind: 'agent_segment_campaign',
+    generatedAt: now,
+    course: input.courseName,
+    audience: {
+      description: input.targetDescription,
+      fieldsOfStudy: input.fieldsOfStudy ?? [],
+      careerSignal: input.careerSignal ?? 'any',
+      estimatedSize: input.estimatedSize,
+      emailConsent,
+      rationale: input.rationale,
+    },
+    crmCampaign: {
+      endpoint: 'https://api.dynamics.com/v9.2/campaigns',
+      method: 'POST',
+      body: {
+        name: `UNSW Online · ${input.courseName} · agent-drafted`,
+        description: `Auto-built by Marketing Intelligence agent. ${input.rationale}`,
+        typecode: 1,
+        statuscode: 0,
+        prospectscountbase: input.estimatedSize,
+        subject: `${input.courseName} — a course matched to your career trajectory`,
+        customFields: {
+          unsw_source: 'marketing-intelligence-agent',
+          unsw_governed_by: 'UNSW policy v1.2',
+          unsw_audience: input.targetDescription,
+          unsw_created_at: now,
+          unsw_idempotency_key: idempotencyKey,
+        },
+        note: 'Dynamics is the lead master — AEP will sync via the CRM→AEP connector after review.',
+      },
+    },
+    aepSegment: {
+      endpoint: 'https://platform.adobe.io/data/core/ups/segment/definitions',
+      method: 'POST',
+      body: {
+        name: `UNSW Online · ${input.courseName} · ${input.careerSignal ?? 'any signal'}`,
+        description: input.targetDescription,
+        expression: {
+          type: 'PQL',
+          format: 'pql/text',
+          value: [
+            ...(input.fieldsOfStudy?.length
+              ? [`education.fieldOfStudy IN ("${input.fieldsOfStudy.join('","')}")`]
+              : []),
+            ...(input.careerSignal && input.careerSignal !== 'any'
+              ? [`careerSignals.type = "${input.careerSignal}"`]
+              : []),
+            `coursePurchases.mostRecentAt < now() - 1year OR coursePurchases IS NULL`,
+          ].join('\nAND '),
+        },
+        profileInstances: { estimated: input.estimatedSize },
+        tags: ['unsw-online', 'agent-built', 'lifelong-learning'],
+      },
+    },
+    nextSteps: [
+      'Review and approve the Dynamics campaign record',
+      'Sync the AEP segment via the CRM→AEP connector',
+      'Attach to an AJO journey for email delivery',
+      'Set a hold-out group to measure real uplift',
+    ],
+  };
+}
+
 const SYSTEM_PROMPT = `You are the Marketing Intelligence assistant for UNSW Online's lifelong learning alumni engagement tool.
 
 The tool has four tabs — Signals, Cohorts, Segments, and Course Intelligence — each with a live data view.
 
-You have access to a 'spotlight' tool. Call it BEFORE narrating each section to move the presenter card to the relevant part of the UI. Available targets:
-- signalsFeed — the career signal feed on the Signals tab
-- cohortsChart — the engagement trend chart on the Cohorts tab
-- segmentsResult — the matched audience count header on the Segments tab
-- ciReasoning — the agent reasoning panel on the Course Intelligence tab
-- ciRecommendations — the course priority list on the Course Intelligence tab
+You have two tools available:
 
-Keep responses concise and presenter-friendly — this is a live demo. Use **bold** for key numbers and course names. Aim for 2–4 sentences per section before calling the next spotlight.`;
+1. 'spotlight' — call it BEFORE narrating each section to move the presenter card to the relevant UI element. Targets: signalsFeed, cohortsChart, segmentsResult, ciReasoning, ciRecommendations.
 
-function sse(event: string, data: Record<string, string>): string {
+2. 'build_segment' — call this whenever the user asks to launch a course, build a campaign, target an audience, or promote anything. Infer the audience from context; do not ask for clarification first. After calling it, briefly confirm what you built and why the audience is a strong fit.
+
+Keep responses concise and presenter-friendly. Use **bold** for key numbers and course names.`;
+
+function sse(event: string, data: Record<string, unknown>): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
@@ -80,7 +195,7 @@ export async function POST(req: Request): Promise<Response> {
             model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
             max_tokens: 4096,
             system: SYSTEM_PROMPT,
-            tools: [SPOTLIGHT_TOOL],
+            tools: [SPOTLIGHT_TOOL, BUILD_SEGMENT_TOOL],
             messages,
           });
 
@@ -118,6 +233,15 @@ export async function POST(req: Request): Promise<Response> {
                       tag: parsedInput['tag'] ?? '',
                     }),
                   );
+                } else if (currentToolName === 'build_segment') {
+                  const payload = buildSegmentPayload(parsedInput as unknown as BuildSegmentInput);
+                  send(
+                    sse('segment_built', {
+                      title: `Campaign · ${parsedInput['courseName'] ?? 'New course'}`,
+                      payload: JSON.stringify(payload),
+                    }),
+                  );
+                  send(sse('tool_call', { name: 'build_segment ✓', input: '' }));
                 } else {
                   send(
                     sse('tool_call', { name: currentToolName, input: currentToolInput }),

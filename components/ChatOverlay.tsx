@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { streamChat } from '../lib/chat-stream';
 import { useSessionId } from '../hooks/useSessionId';
 import { useVoice } from '../hooks/useVoice';
+import { usePayload } from './PayloadContext';
 import { Presenter, type PresenterHandle } from './Presenter';
 import { BaselineStream, BASELINE_STREAM_WIDTH } from './BaselineStream';
 import type { PresenterStep } from '../lib/presenter/types';
@@ -18,6 +19,7 @@ export function ChatOverlay() {
   const presenterRef = useRef<PresenterHandle>(null);
   const sessionId = useSessionId();
   const voice = useVoice();
+  const { show: showPayload } = usePayload();
 
   const switchMode = useCallback(
     (next: Mode) => {
@@ -43,6 +45,7 @@ export function ChatOverlay() {
           },
           onToolCall: (name, input) =>
             presenterRef.current?.appendTool(`${name} · ${input.slice(0, 40)}`),
+          onSegmentBuilt: (title, payload) => showPayload(title, payload),
           onThinkingSignal: (phase) => presenterRef.current?.setReasoning(phase === 'start'),
           onError: (message) => presenterRef.current?.appendText(`\n\n**Error:** ${message}`),
         });
@@ -52,7 +55,7 @@ export function ChatOverlay() {
         voice.flush();
       }
     },
-    [streaming, sessionId, voice],
+    [streaming, sessionId, voice, showPayload],
   );
 
   const streamOpen = mode === 'chat';

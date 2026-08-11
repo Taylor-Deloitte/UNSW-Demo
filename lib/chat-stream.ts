@@ -3,6 +3,7 @@ export interface StreamCallbacks {
   onText?: (text: string) => void;
   onToolCall?: (name: string, input: string) => void;
   onSpotlight?: (target: string, tag: string) => void;
+  onSegmentBuilt?: (title: string, payload: unknown) => void;
   onError?: (message: string) => void;
 }
 
@@ -10,7 +11,7 @@ function dispatch(frame: string, cb: StreamCallbacks): void {
   const event = /^event: (.*)$/m.exec(frame)?.[1];
   const dataRaw = /^data: (.*)$/m.exec(frame)?.[1];
   if (event === undefined || dataRaw === undefined) return;
-  const data = JSON.parse(dataRaw) as Record<string, string>;
+  const data = JSON.parse(dataRaw) as Record<string, string | undefined>;
   switch (event) {
     case 'thinking_signal': {
       const phase = data['phase'];
@@ -26,6 +27,17 @@ function dispatch(frame: string, cb: StreamCallbacks): void {
     case 'spotlight':
       cb.onSpotlight?.(data['target'] ?? '', data['tag'] ?? '');
       break;
+    case 'segment_built': {
+      const raw = data['payload'];
+      if (raw) {
+        try {
+          cb.onSegmentBuilt?.(data['title'] ?? 'Campaign', JSON.parse(raw) as unknown);
+        } catch {
+          // malformed payload — skip
+        }
+      }
+      break;
+    }
     case 'error':
       cb.onError?.(data['message'] ?? 'unknown error');
       break;
