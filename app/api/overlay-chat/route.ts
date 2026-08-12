@@ -1,6 +1,17 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { MessageParam, Tool } from '@anthropic-ai/sdk/resources/messages';
+import type { MessageParam, Tool, ToolUseBlock } from '@anthropic-ai/sdk/resources/messages';
 import { NextResponse } from 'next/server';
+import { getDataBundle } from '../../../lib/data';
+import { queryAep, type QueryAepInput } from '../../../lib/agent/mcp-tools/query-aep';
+import {
+  runPropensityModel,
+  type RunPropensityModelInput,
+} from '../../../lib/agent/mcp-tools/run-propensity-model';
+import type { DataBundle } from '../../../lib/types';
+import {
+  buildCampaignPayload,
+  type BuildSegmentInput,
+} from '../../../lib/agent/build-campaign-payload';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -28,131 +39,187 @@ const SPOTLIGHT_TOOL: Tool = {
   },
 };
 
-const BUILD_SEGMENT_TOOL: Tool = {
-  name: 'build_segment',
+const SIZE_AUDIENCE_TOOL: Tool = {
+  name: 'size_audience',
   description:
-    'Build a targeted audience segment and CRM campaign draft for a course. Call this whenever the user asks to launch a campaign, target an audience, build a segment, or promote a new course. Infer audience parameters from the conversation — do not ask for clarification before calling.',
+    'Query the real UNSW alumni database to size an audience by criteria. Returns a real matched count and sample profiles. Call this before quoting any audience size — never estimate one.',
   input_schema: {
     type: 'object' as const,
     properties: {
-      courseName: {
-        type: 'string',
-        description: 'Full name of the course to promote',
+      audienceCriteria: {
+        type: 'object' as const,
+        description: 'Filter criteria — omit a field to leave it unrestricted',
+        properties: {
+          industries: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'e.g. ["Technology", "Financial Services"]',
+          },
+          seniorities: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'e.g. ["Senior", "Lead", "Manager"]',
+          },
+          states: { type: 'array', items: { type: 'string' }, description: 'e.g. ["NSW", "VIC"]' },
+          hasRecentSignal: {
+            type: 'boolean',
+            description: 'Restrict to alumni with a career signal detected in the last 90 days',
+          },
+        },
       },
-      targetDescription: {
-        type: 'string',
-        description: 'Natural language summary of the target audience, e.g. "CS graduates promoted in the last 12 months"',
-      },
-      fieldsOfStudy: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Relevant degree fields, e.g. ["Computer Science", "Engineering"]',
-      },
-      careerSignal: {
-        type: 'string',
-        enum: ['promoted', 'role-change', 'redundancy', 'any'],
-        description: 'Career event to filter on',
-      },
-      estimatedSize: {
+      limit: {
         type: 'number',
-        description: 'Estimated matched audience size',
-      },
-      rationale: {
-        type: 'string',
-        description: 'One sentence explaining why this audience is a strong match for this course',
+        description:
+          'Max sample profiles to return (default 20) — audienceSize is always the full real count',
       },
     },
-    required: ['courseName', 'targetDescription', 'estimatedSize', 'rationale'],
+    required: ['audienceCriteria'],
   },
 };
 
-interface BuildSegmentInput {
-  courseName: string;
-  targetDescription: string;
-  fieldsOfStudy?: string[];
-  careerSignal?: string;
-  estimatedSize: number;
-  rationale: string;
-}
-
-function buildSegmentPayload(input: BuildSegmentInput) {
-  const idempotencyKey = `seg-${Math.random().toString(36).slice(2, 10)}`;
-  const now = new Date().toISOString();
-  const emailConsent = Math.round(input.estimatedSize * 0.87);
-
-  return {
-    kind: 'agent_segment_campaign',
-    generatedAt: now,
-    course: input.courseName,
-    audience: {
-      description: input.targetDescription,
-      fieldsOfStudy: input.fieldsOfStudy ?? [],
-      careerSignal: input.careerSignal ?? 'any',
-      estimatedSize: input.estimatedSize,
-      emailConsent,
-      rationale: input.rationale,
+const SCORE_PROPENSITY_TOOL: Tool = {
+  name: 'score_propensity',
+  description:
+    'Score real alumni propensity to enrol in a specific course, ranked highest first. Optionally restrict to alumniId values returned by a prior size_audience call. Call this before quoting any conversion or enrolment estimate for a course.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      courseIdOrName: { type: 'string', description: 'Course name or code, e.g. "AI for Leaders"' },
+      filterAlumniIds: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Optional: restrict scoring to these alumniId values (from a prior size_audience result)',
+      },
+      topN: { type: 'number', description: 'How many top-ranked alumni to return (default 10)' },
     },
-    crmCampaign: {
-      endpoint: 'https://api.dynamics.com/v9.2/campaigns',
-      method: 'POST',
-      body: {
-        name: `UNSW Online · ${input.courseName} · agent-drafted`,
-        description: `Auto-built by Marketing Intelligence agent. ${input.rationale}`,
-        typecode: 1,
-        statuscode: 0,
-        prospectscountbase: input.estimatedSize,
-        subject: `${input.courseName} — a course matched to your career trajectory`,
-        customFields: {
-          unsw_source: 'marketing-intelligence-agent',
-          unsw_governed_by: 'UNSW policy v1.2',
-          unsw_audience: input.targetDescription,
-          unsw_created_at: now,
-          unsw_idempotency_key: idempotencyKey,
+    required: ['courseIdOrName'],
+  },
+};
+
+const BUILD_SEGMENT_TOOL: Tool = {
+  name: 'build_segment',
+  description:
+    "Build a data-grounded, multi-variant campaign for a course. Call 'size_audience' and/or 'score_propensity' FIRST — every variant's eligiblePool must equal a real number already returned in this conversation, never an invented figure. Produce 2-3 variants spanning different strategies (e.g. a high-propensity variant scored via score_propensity, a broad-reach variant sized via size_audience alone, a re-engagement variant targeting a dormant or course-recency signal). After calling this, briefly confirm what you built, which variant you recommend, and why.",
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      courseName: { type: 'string', description: 'Full name of the course to promote' },
+      objective: {
+        type: 'string',
+        description:
+          'One-sentence business objective, e.g. "Fill remaining seats in the next intake"',
+      },
+      variants: {
+        type: 'array',
+        minItems: 2,
+        maxItems: 3,
+        items: {
+          type: 'object',
+          properties: {
+            variantName: { type: 'string', description: 'e.g. "High-propensity reach"' },
+            classification: {
+              type: 'string',
+              enum: ['high-propensity', 'broad-reach', 're-engagement'],
+              description: 'Strategic type of this variant',
+            },
+            audienceFilter: {
+              type: 'object',
+              description: 'The criteria object actually used with size_audience for this variant',
+              properties: {
+                industries: { type: 'array', items: { type: 'string' } },
+                seniorities: { type: 'array', items: { type: 'string' } },
+                states: { type: 'array', items: { type: 'string' } },
+                hasRecentSignal: { type: 'boolean' },
+              },
+            },
+            audienceFilterSummary: {
+              type: 'string',
+              description:
+                'Plain-language description of the filter, e.g. "Technology alumni with a promotion signal in the last 90 days"',
+            },
+            eligiblePool: {
+              type: 'number',
+              description:
+                'Real matched count — must equal a number returned earlier by size_audience or score_propensity',
+            },
+            avgPropensityScore: {
+              type: 'number',
+              description:
+                'Average propensity score (0-1) from score_propensity, if used for this variant',
+            },
+            conversionAssumptionPct: {
+              type: 'number',
+              description:
+                'Assumed enrolment conversion rate as a percentage — justify it in dataSource',
+            },
+            estimatedEnrolments: {
+              type: 'number',
+              description: 'eligiblePool x (conversionAssumptionPct / 100), rounded',
+            },
+            dataSource: {
+              type: 'string',
+              description:
+                'Which tool call(s) produced eligiblePool/avgPropensityScore — cite the literal criteria, e.g. "size_audience(industries=[Technology], hasRecentSignal=true) -> 214"',
+            },
+            confidence: {
+              type: 'string',
+              enum: ['High', 'Medium', 'Low'],
+              description:
+                'High = audience size AND propensity both real tool results this turn. Medium = audience size real, conversion assumed. Low = limited data backing.',
+            },
+          },
+          required: [
+            'variantName',
+            'classification',
+            'audienceFilterSummary',
+            'eligiblePool',
+            'conversionAssumptionPct',
+            'estimatedEnrolments',
+            'dataSource',
+            'confidence',
+          ],
         },
-        note: 'Dynamics is the lead master — AEP will sync via the CRM→AEP connector after review.',
+      },
+      recommendedVariantIndex: {
+        type: 'number',
+        description: '0-based index into variants[] of the recommended option',
+      },
+      rationale: {
+        type: 'string',
+        description: 'One-to-two sentence rationale for the recommendation',
       },
     },
-    aepSegment: {
-      endpoint: 'https://platform.adobe.io/data/core/ups/segment/definitions',
-      method: 'POST',
-      body: {
-        name: `UNSW Online · ${input.courseName} · ${input.careerSignal ?? 'any signal'}`,
-        description: input.targetDescription,
-        expression: {
-          type: 'PQL',
-          format: 'pql/text',
-          value: [
-            ...(input.fieldsOfStudy?.length
-              ? [`education.fieldOfStudy IN ("${input.fieldsOfStudy.join('","')}")`]
-              : []),
-            ...(input.careerSignal && input.careerSignal !== 'any'
-              ? [`careerSignals.type = "${input.careerSignal}"`]
-              : []),
-            `coursePurchases.mostRecentAt < now() - 1year OR coursePurchases IS NULL`,
-          ].join('\nAND '),
-        },
-        profileInstances: { estimated: input.estimatedSize },
-        tags: ['unsw-online', 'agent-built', 'lifelong-learning'],
-      },
-    },
-    nextSteps: [
-      'Review and approve the Dynamics campaign record',
-      'Sync the AEP segment via the CRM→AEP connector',
-      'Attach to an AJO journey for email delivery',
-      'Set a hold-out group to measure real uplift',
-    ],
-  };
+    required: ['courseName', 'objective', 'variants', 'recommendedVariantIndex', 'rationale'],
+  },
+};
+
+function executeTool(name: string, input: unknown, bundle: DataBundle): unknown {
+  switch (name) {
+    case 'size_audience':
+      return queryAep(bundle, input as QueryAepInput);
+    case 'score_propensity':
+      return runPropensityModel(bundle, input as RunPropensityModelInput);
+    case 'build_segment':
+      return { ok: true, note: 'Campaign variants generated and shown to the presenter.' };
+    default:
+      return { ok: true };
+  }
 }
 
 const SYSTEM_PROMPT = `You are the Marketing Intelligence assistant for UNSW Online's lifelong learning alumni engagement tool.
 
 The tool has four tabs — Signals, Cohorts, Segments, and Course Intelligence — each with a live data view.
 
-You have two tools available:
+You have four tools available:
 
 1. 'spotlight' — call it BEFORE narrating each section to move the presenter card to the relevant UI element. Targets: signalsFeed, cohortsChart, segmentsResult, ciReasoning, ciRecommendations.
 
-2. 'build_segment' — call this whenever the user asks to launch a course, build a campaign, target an audience, or promote anything. Infer the audience from context; do not ask for clarification first. After calling it, briefly confirm what you built and why the audience is a strong fit.
+2. 'size_audience' — queries the real alumni database by criteria (industry, seniority, state, recent career signal) and returns a real matched count. Call this before quoting any audience size.
+
+3. 'score_propensity' — scores real alumni propensity to enrol in a specific course, optionally restricted to alumniId values from a prior size_audience result. Call this before quoting any conversion or enrolment estimate for a course.
+
+4. 'build_segment' — call this whenever the user asks to launch a course, build a campaign, target an audience, or promote anything. Before calling it, call 'size_audience' and/or 'score_propensity' to ground every variant in a real number from this conversation — never invent an eligiblePool. Produce 2-3 variants spanning different strategies (e.g. a high-propensity variant scored via score_propensity, a broad-reach variant sized via size_audience alone, and a re-engagement variant targeting a dormant or course-recency signal). Every variant needs a dataSource string citing the literal tool call that produced its numbers, and an honest confidence level — 'High' only when both audience size and propensity are real tool results, 'Low' when you had to assume. After calling it, briefly confirm what you built, which variant you recommend, and why.
 
 Keep responses concise and presenter-friendly. Use **bold** for key numbers and course names.`;
 
@@ -169,6 +236,7 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
   }
 
+  const bundle = await getDataBundle();
   const history = sessions.get(sessionId) ?? [];
   const messages: MessageParam[] = [...history, { role: 'user', content: prompt }];
 
@@ -181,7 +249,7 @@ export async function POST(req: Request): Promise<Response> {
       try {
         // Agentic loop — continues until stop_reason is 'end_turn'
         let iterations = 0;
-        while (iterations < 8) {
+        while (iterations < 12) {
           iterations++;
 
           // Track current tool_use accumulation across events
@@ -193,9 +261,9 @@ export async function POST(req: Request): Promise<Response> {
           // client.messages.stream() gives us event iteration + .finalMessage()
           const sdkStream = client.messages.stream({
             model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
-            max_tokens: 4096,
+            max_tokens: 8192,
             system: SYSTEM_PROMPT,
-            tools: [SPOTLIGHT_TOOL, BUILD_SEGMENT_TOOL],
+            tools: [SPOTLIGHT_TOOL, SIZE_AUDIENCE_TOOL, SCORE_PROPENSITY_TOOL, BUILD_SEGMENT_TOOL],
             messages,
           });
 
@@ -220,32 +288,30 @@ export async function POST(req: Request): Promise<Response> {
             } else if (event.type === 'content_block_stop') {
               if (inToolUse) {
                 inToolUse = false;
-                let parsedInput: Record<string, string> = {};
-                try {
-                  parsedInput = JSON.parse(currentToolInput) as Record<string, string>;
-                } catch {
-                  // malformed input — skip
-                }
                 if (currentToolName === 'spotlight') {
-                  send(
-                    sse('spotlight', {
-                      target: parsedInput['target'] ?? '',
-                      tag: parsedInput['tag'] ?? '',
-                    }),
-                  );
+                  let parsed: { target?: string; tag?: string } = {};
+                  try {
+                    parsed = JSON.parse(currentToolInput) as { target?: string; tag?: string };
+                  } catch {
+                    // malformed input — skip
+                  }
+                  send(sse('spotlight', { target: parsed.target ?? '', tag: parsed.tag ?? '' }));
                 } else if (currentToolName === 'build_segment') {
-                  const payload = buildSegmentPayload(parsedInput as unknown as BuildSegmentInput);
-                  send(
-                    sse('segment_built', {
-                      title: `Campaign · ${parsedInput['courseName'] ?? 'New course'}`,
-                      payload: JSON.stringify(payload),
-                    }),
-                  );
-                  send(sse('tool_call', { name: 'build_segment ✓', input: '' }));
+                  try {
+                    const parsed = JSON.parse(currentToolInput) as BuildSegmentInput;
+                    const payload = buildCampaignPayload(parsed, bundle);
+                    send(
+                      sse('segment_built', {
+                        title: `Campaign · ${parsed.courseName}`,
+                        payload: JSON.stringify(payload),
+                      }),
+                    );
+                    send(sse('tool_call', { name: 'build_segment ✓', input: '' }));
+                  } catch {
+                    send(sse('tool_call', { name: 'build_segment (parse error)', input: '' }));
+                  }
                 } else {
-                  send(
-                    sse('tool_call', { name: currentToolName, input: currentToolInput }),
-                  );
+                  send(sse('tool_call', { name: currentToolName, input: currentToolInput }));
                 }
                 currentToolName = '';
                 currentToolId = '';
@@ -262,14 +328,17 @@ export async function POST(req: Request): Promise<Response> {
           messages.push({ role: 'assistant', content: finalMessage.content });
 
           if (finalMessage.stop_reason === 'tool_use') {
-            // Return tool results and loop
+            // Execute each tool for real and return its result and loop
             const toolResults: MessageParam['content'] = finalMessage.content
               .filter((b) => b.type === 'tool_use')
-              .map((b) => ({
-                type: 'tool_result' as const,
-                tool_use_id: (b as { type: 'tool_use'; id: string }).id,
-                content: 'ok',
-              }));
+              .map((b) => {
+                const block = b as ToolUseBlock;
+                return {
+                  type: 'tool_result' as const,
+                  tool_use_id: block.id,
+                  content: JSON.stringify(executeTool(block.name, block.input, bundle)),
+                };
+              });
             messages.push({ role: 'user', content: toolResults });
           } else {
             break;

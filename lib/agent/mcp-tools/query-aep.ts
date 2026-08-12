@@ -13,6 +13,7 @@ export interface QueryAepInput {
 export interface QueryAepOutput {
   profiles: Array<{
     profileId: string;
+    alumniId: string;
     displayName: string;
     industry: string;
     seniority: string;
@@ -49,6 +50,7 @@ export function queryAep(bundle: DataBundle, input: QueryAepInput): QueryAepOutp
   return {
     profiles: matched.slice(0, limit).map((a) => ({
       profileId: a.crmId,
+      alumniId: a.id,
       displayName: `${a.firstName} ${a.lastName}`,
       industry: a.currentIndustry,
       seniority: a.currentSeniority,

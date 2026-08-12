@@ -30,10 +30,11 @@ describe('queryAep', () => {
     expect(recent).toBeLessThanOrEqual(all);
   });
 
-  it('shapes profiles with crmId + display name', () => {
+  it('shapes profiles with crmId + alumniId + display name', () => {
     const r = queryAep(bundle, { audienceCriteria: {}, limit: 3 });
     for (const p of r.profiles) {
       expect(p.profileId).toMatch(/^crm-/);
+      expect(p.alumniId).toMatch(/^contact-/);
       expect(p.displayName.split(' ').length).toBeGreaterThanOrEqual(2);
     }
   });
