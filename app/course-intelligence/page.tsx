@@ -11,7 +11,6 @@ import { SavedPlansPanel } from '../../components/SavedPlansPanel';
 import type { CoursePlanRecord } from '../../lib/agent/session-store';
 import {
   getCourseIntelligence,
-  type AgentStep,
   type CatalogueGap,
   type Cohort,
   type CourseIntelligenceResult,
@@ -64,7 +63,6 @@ const PCT = new Intl.NumberFormat('en-AU', {
 
 export default function CourseIntelligencePage() {
   const [q, setQ] = useState<CiQuery>(DEFAULT_Q);
-  const [visibleSteps, setVisibleSteps] = useState(0);
   const [plans, setPlans] = useState<CoursePlanRecord[]>([]);
   const { show } = usePayload();
   const { call } = useServerTool();
@@ -74,15 +72,6 @@ export default function CourseIntelligencePage() {
     () => getCourseIntelligence(q.cohort, q.signal, q.window),
     [q],
   );
-
-  // Cascade-reveal agent reasoning steps on load and query change
-  useEffect(() => {
-    setVisibleSteps(0);
-    const timers = result.agentSteps.map((_, i) =>
-      setTimeout(() => setVisibleSteps(i + 1), i * 450),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [q, result.agentSteps]);
 
   // Fire MCP tool calls in background so audit log populates
   useEffect(() => {
@@ -170,12 +159,6 @@ export default function CourseIntelligencePage() {
         onPlanSaved={(plan) => setPlans((prev) => [...prev, plan])}
       />
 
-      <AgentReasoningBand
-        steps={result.agentSteps}
-        visibleSteps={visibleSteps}
-        summary={result.agentSummary}
-      />
-
       <div className="flex flex-1" style={{ minHeight: 0, overflowY: 'auto' }}>
         <RecommendationsColumn recommendations={result.recommendations} />
         <SideColumn
@@ -186,76 +169,6 @@ export default function CourseIntelligencePage() {
       </div>
 
       <ToolFooter chips={CHIPS} />
-    </div>
-  );
-}
-
-function AgentReasoningBand({
-  steps,
-  visibleSteps,
-  summary,
-}: {
-  steps: AgentStep[];
-  visibleSteps: number;
-  summary: string;
-}) {
-  return (
-    <div
-      id="ciReasoning"
-      className="flex-none bg-ink"
-      style={{ padding: '20px 36px', display: 'flex', flexDirection: 'column', gap: 14 }}
-    >
-      <div
-        className="uppercase text-unsw-yellow"
-        style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em' }}
-      >
-        Agent reasoning
-      </div>
-      <div className="flex flex-wrap" style={{ gap: '10px 32px' }}>
-        {steps.map((step, i) => {
-          const visible = i < visibleSteps;
-          return (
-            <div
-              key={step.id}
-              className="flex items-center text-white"
-              style={{
-                gap: 8,
-                fontSize: 13,
-                opacity: visible ? 1 : 0.25,
-                transition: 'opacity 0.3s ease',
-              }}
-            >
-              <span
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: '50%',
-                  background: visible ? '#1ac987' : 'transparent',
-                  border: `1.5px solid ${visible ? '#1ac987' : 'rgba(255,255,255,0.3)'}`,
-                  flexShrink: 0,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 9,
-                  fontWeight: 700,
-                  color: '#fff',
-                }}
-              >
-                {visible ? '✓' : ''}
-              </span>
-              <span style={{ fontWeight: 500 }}>{step.label}</span>
-            </div>
-          );
-        })}
-      </div>
-      {visibleSteps >= steps.length && (
-        <div
-          className="text-white"
-          style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.85, maxWidth: 860 }}
-        >
-          {summary}
-        </div>
-      )}
     </div>
   );
 }

@@ -38,7 +38,7 @@ const SPOTLIGHT_TOOL: Tool = {
     properties: {
       target: {
         type: 'string',
-        enum: ['signalsFeed', 'cohortsChart', 'segmentsResult', 'ciReasoning', 'ciRecommendations'],
+        enum: ['signalsFeed', 'cohortsChart', 'segmentsResult', 'ciRecommendations'],
         description: 'DOM id of the widget to spotlight',
       },
       tag: {
@@ -288,7 +288,7 @@ The tool has four tabs — Signals, Cohorts, Segments, and Course Intelligence �
 
 You have three tools available:
 
-1. 'spotlight' — call it BEFORE narrating each section to move the presenter card to the relevant UI element. Targets: signalsFeed, cohortsChart, segmentsResult, ciReasoning, ciRecommendations.
+1. 'spotlight' — call it BEFORE narrating each section to move the presenter card to the relevant UI element. Targets: signalsFeed, cohortsChart, segmentsResult, ciRecommendations.
 
 2. 'size_audience' — queries the real alumni database by criteria and returns a real matched count. Call this before quoting any audience size.
 

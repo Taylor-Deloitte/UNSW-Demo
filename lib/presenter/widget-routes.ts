@@ -4,6 +4,5 @@ export const PRESENTER_WIDGET_ROUTES: Record<PresenterWidgetId, string> = {
   signalsFeed: '/signals',
   cohortsChart: '/cohorts',
   segmentsResult: '/segments',
-  ciReasoning: '/course-intelligence',
   ciRecommendations: '/course-intelligence',
 };

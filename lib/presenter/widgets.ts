@@ -2,7 +2,6 @@ export const PRESENTER_WIDGETS = {
   signalsFeed: 'Career signals',
   cohortsChart: 'Cohort trend',
   segmentsResult: 'Matched alumni',
-  ciReasoning: 'Agent reasoning',
   ciRecommendations: 'Course recommendations',
 } as const;
 
