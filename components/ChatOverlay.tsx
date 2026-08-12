@@ -12,6 +12,13 @@ import type { PresenterStep } from '../lib/presenter/types';
 
 type Mode = 'closed' | 'brief';
 
+const TOUR_PINNED_LABEL = 'Full walkthrough: Signals → Cohorts → Segments → Course Intelligence';
+
+const TOUR_PROMPT =
+  'Give me a full guided walkthrough of the alumni engagement tool. Cover all four tabs in order — ' +
+  'Signals, Cohorts, Segments, then Course Intelligence — spotlighting the key widget on each tab as ' +
+  'you narrate it. Call out the standout numbers on each screen.';
+
 // Polls for a DOM node rather than relying on a fixed delay after navigation,
 // since Next.js client-side route transitions don't resolve to a fixed timing.
 function waitForElement(id: string, timeoutMs = 2000): Promise<void> {
@@ -65,46 +72,48 @@ export function ChatOverlay() {
     [router],
   );
 
-  const toggleMode = useCallback(() => {
-    setMode((prev) => (prev === 'brief' ? 'closed' : 'brief'));
-  }, []);
+  const runTour = useCallback(async () => {
+    if (streaming || !sessionId) return;
+    setStreaming(true);
+    setPinned(TOUR_PINNED_LABEL);
+    presenterRef.current?.reset(TOUR_PINNED_LABEL);
+    voice.stop();
 
-  const ask = useCallback(
-    async (prompt: string) => {
-      if (streaming || prompt.trim() === '' || !sessionId) return;
-      setStreaming(true);
-      setPinned(prompt);
-      presenterRef.current?.reset(prompt);
-      voice.stop();
+    try {
+      await streamChat(TOUR_PROMPT, sessionId, 'brief', {
+        onSpotlight,
+        onText: (delta) => {
+          presenterRef.current?.appendText(delta);
+          voice.onDelta(delta);
+        },
+        onToolCall: (name, input) =>
+          presenterRef.current?.appendTool(`${name} · ${input.slice(0, 40)}`),
+        onThinkingSignal: (phase) => presenterRef.current?.setReasoning(phase === 'start'),
+        onError: (message) => presenterRef.current?.appendText(`\n\n**Error:** ${message}`),
+      });
+    } finally {
+      presenterRef.current?.finish();
+      setStreaming(false);
+      voice.flush();
+    }
+  }, [streaming, sessionId, voice, onSpotlight]);
 
-      try {
-        await streamChat(prompt, sessionId, 'brief', {
-          onSpotlight,
-          onText: (delta) => {
-            presenterRef.current?.appendText(delta);
-            voice.onDelta(delta);
-          },
-          onToolCall: (name, input) =>
-            presenterRef.current?.appendTool(`${name} · ${input.slice(0, 40)}`),
-          onThinkingSignal: (phase) => presenterRef.current?.setReasoning(phase === 'start'),
-          onError: (message) => presenterRef.current?.appendText(`\n\n**Error:** ${message}`),
-        });
-      } finally {
-        presenterRef.current?.finish();
-        setStreaming(false);
-        voice.flush();
-      }
-    },
-    [streaming, sessionId, voice, onSpotlight],
-  );
+  const onToggleBrief = useCallback(() => {
+    if (mode === 'brief') {
+      setMode('closed');
+      return;
+    }
+    setMode('brief');
+    void runTour();
+  }, [mode, runTour]);
 
   return (
     <>
-      {/* Brief toggle — fixed top-right */}
-      <div style={{ position: 'fixed', top: 16, right: 12, zIndex: 70 }}>
+      {/* Brief + voice toggles — fixed top-right */}
+      <div style={{ position: 'fixed', top: 16, right: 12, zIndex: 70, display: 'flex', gap: 8 }}>
         <button
           type="button"
-          onClick={toggleMode}
+          onClick={onToggleBrief}
           style={{
             padding: '7px 14px',
             border: '2px solid #000',
@@ -122,6 +131,21 @@ export function ChatOverlay() {
           <span style={{ fontSize: 13 }}>✨</span>
           Brief
         </button>
+        <button
+          type="button"
+          onClick={voice.toggle}
+          title={voice.enabled ? 'Voice on' : 'Voice off'}
+          style={{
+            padding: '7px 12px',
+            border: '2px solid #000',
+            background: voice.enabled ? '#FFD100' : '#fff',
+            color: '#000',
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          {voice.enabled ? '🔊' : '🔇'}
+        </button>
       </div>
 
       {/* Presenter card — always mounted so the ref stays live, visible only while briefing */}
@@ -132,101 +156,6 @@ export function ChatOverlay() {
         visible={mode === 'brief' && (streaming || steps.length > 1)}
         onStepsChange={setSteps}
       />
-
-      {mode === 'brief' && (
-        <BriefComposer
-          streaming={streaming}
-          voiceEnabled={voice.enabled}
-          onToggleVoice={voice.toggle}
-          onSubmit={ask}
-        />
-      )}
     </>
-  );
-}
-
-function BriefComposer({
-  streaming,
-  voiceEnabled,
-  onToggleVoice,
-  onSubmit,
-}: {
-  streaming: boolean;
-  voiceEnabled: boolean;
-  onToggleVoice: () => void;
-  onSubmit: (prompt: string) => void;
-}) {
-  const [prompt, setPrompt] = useState('');
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const trimmed = prompt.trim();
-        if (!trimmed || streaming) return;
-        onSubmit(trimmed);
-        setPrompt('');
-      }}
-      style={{
-        position: 'fixed',
-        bottom: 24,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 60,
-        display: 'flex',
-        gap: 0,
-        width: 560,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-      }}
-    >
-      <input
-        type="text"
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        disabled={streaming}
-        placeholder={streaming ? 'Speaking…' : 'Ask for a briefing on the alumni data…'}
-        autoComplete="off"
-        style={{
-          flex: 1,
-          padding: '11px 16px',
-          border: '2px solid #000',
-          borderRight: 'none',
-          fontSize: 14,
-          fontFamily: 'inherit',
-          background: '#fff',
-        }}
-      />
-      <button
-        type="button"
-        onClick={onToggleVoice}
-        title={voiceEnabled ? 'Voice on' : 'Voice off'}
-        style={{
-          padding: '11px 13px',
-          border: '2px solid #000',
-          borderRight: 'none',
-          background: voiceEnabled ? '#FFD100' : '#fff',
-          color: '#000',
-          fontSize: 14,
-          cursor: 'pointer',
-        }}
-      >
-        {voiceEnabled ? '🔊' : '🔇'}
-      </button>
-      <button
-        type="submit"
-        disabled={streaming}
-        style={{
-          padding: '11px 18px',
-          border: '2px solid #000',
-          background: streaming ? '#e0e0e0' : '#000',
-          color: streaming ? '#55565a' : '#FFD100',
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: streaming ? 'not-allowed' : 'pointer',
-        }}
-      >
-        {streaming ? '…' : 'Ask'}
-      </button>
-    </form>
   );
 }

@@ -164,6 +164,12 @@ export default function CourseIntelligencePage() {
         />
       </QueryBand>
 
+      <CoursePlannerSection
+        sessionId={sessionId}
+        plans={plans}
+        onPlanSaved={(plan) => setPlans((prev) => [...prev, plan])}
+      />
+
       <AgentReasoningBand
         steps={result.agentSteps}
         visibleSteps={visibleSteps}
@@ -178,12 +184,6 @@ export default function CourseIntelligencePage() {
           onPushToCrm={onPushToCrm}
         />
       </div>
-
-      <CoursePlannerSection
-        sessionId={sessionId}
-        plans={plans}
-        onPlanSaved={(plan) => setPlans((prev) => [...prev, plan])}
-      />
 
       <ToolFooter chips={CHIPS} />
     </div>
@@ -486,7 +486,7 @@ function CoursePlannerSection({
       className="flex-none"
       style={{ borderTop: '2px solid #000', padding: '22px 36px', display: 'flex', gap: 24 }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 2, minWidth: 0 }}>
         <CampaignPlannerChat sessionId={sessionId} onPlanSaved={onPlanSaved} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>

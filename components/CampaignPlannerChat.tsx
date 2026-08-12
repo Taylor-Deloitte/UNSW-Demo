@@ -13,6 +13,8 @@ function bold(s: string): string {
   return s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 }
 
+const PANEL_HEIGHT = 460;
+
 export function CampaignPlannerChat({
   sessionId,
   onPlanSaved,
@@ -61,9 +63,12 @@ export function CampaignPlannerChat({
     streaming && messages.length > 0 && messages[messages.length - 1]?.text === '';
 
   return (
-    <div className="flex flex-col" style={{ border: '2px solid #000', background: '#fff' }}>
+    <div
+      className="flex flex-col"
+      style={{ border: '2px solid #000', background: '#fff', height: PANEL_HEIGHT }}
+    >
       <div
-        className="text-ink"
+        className="text-ink flex-none"
         style={{
           fontSize: 16,
           fontWeight: 700,
@@ -74,10 +79,10 @@ export function CampaignPlannerChat({
         Campaign planner
       </div>
       <div
+        className="flex-1"
         style={{
           padding: '16px 18px',
-          minHeight: 160,
-          maxHeight: 360,
+          minHeight: 0,
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
@@ -122,6 +127,7 @@ export function CampaignPlannerChat({
           void ask(trimmed);
           setPrompt('');
         }}
+        className="flex-none"
         style={{ display: 'flex', borderTop: '2px solid #000' }}
       >
         <input

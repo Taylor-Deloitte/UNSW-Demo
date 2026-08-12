@@ -15,13 +15,18 @@ const AUD = new Intl.NumberFormat('en-AU', {
   maximumFractionDigits: 0,
 });
 
+const PANEL_HEIGHT = 460;
+
 export function SavedPlansPanel({ plans }: { plans: CoursePlanRecord[] }) {
   const { show } = usePayload();
 
   return (
-    <div className="flex flex-col" style={{ border: '2px solid #000', background: '#fff' }}>
+    <div
+      className="flex flex-col"
+      style={{ border: '2px solid #000', background: '#fff', height: PANEL_HEIGHT }}
+    >
       <div
-        className="text-ink"
+        className="text-ink flex-none"
         style={{
           fontSize: 16,
           fontWeight: 700,
@@ -32,9 +37,10 @@ export function SavedPlansPanel({ plans }: { plans: CoursePlanRecord[] }) {
         Saved campaign plans
       </div>
       <div
+        className="flex-1"
         style={{
           padding: plans.length === 0 ? '16px 18px' : '4px 0',
-          maxHeight: 360,
+          minHeight: 0,
           overflowY: 'auto',
         }}
       >
