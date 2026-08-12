@@ -10,13 +10,24 @@ import {
 import type { DataBundle } from '../../../lib/types';
 import {
   buildCampaignPayload,
+  toCoursePlanRecord,
   type BuildSegmentInput,
 } from '../../../lib/agent/build-campaign-payload';
+import { setSession, appendCoursePlan } from '../../../lib/agent/session-store';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// In-memory multi-turn history per session (single Railway instance is fine for demo)
+type ChatMode = 'campaign' | 'brief';
+
+// In-memory multi-turn history per session+mode (single Railway instance is fine for demo).
+// Campaign and Brief are independent personas/conversations even for the same sessionId.
 const sessions = new Map<string, MessageParam[]>();
+
+// Last campaign payload built per session, so save_campaign_plan persists exactly what
+// the model already showed the user rather than re-deriving (and possibly drifting).
+const lastBuiltPayload = new Map<string, ReturnType<typeof buildCampaignPayload>>();
+
+let planCounter = 0;
 
 const SPOTLIGHT_TOOL: Tool = {
   name: 'spotlight',
@@ -100,7 +111,7 @@ const SCORE_PROPENSITY_TOOL: Tool = {
 const BUILD_SEGMENT_TOOL: Tool = {
   name: 'build_segment',
   description:
-    "Build a data-grounded, multi-variant campaign for a course. Call 'size_audience' and/or 'score_propensity' FIRST — every variant's eligiblePool must equal a real number already returned in this conversation, never an invented figure. Produce 2-3 variants spanning different strategies (e.g. a high-propensity variant scored via score_propensity, a broad-reach variant sized via size_audience alone, a re-engagement variant targeting a dormant or course-recency signal). After calling this, briefly confirm what you built, which variant you recommend, and why.",
+    "Build a data-grounded, multi-variant campaign for a course. Call 'size_audience' and/or 'score_propensity' FIRST — every variant's eligiblePool must equal a real number already returned in this conversation, never an invented figure. Produce 2-3 variants spanning different strategies (e.g. a high-propensity variant scored via score_propensity, a broad-reach variant sized via size_audience alone, a re-engagement variant targeting a dormant or course-recency signal). After calling this, present the variants and ask the user which one to proceed with — do not call save_campaign_plan until they answer.",
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -194,50 +205,130 @@ const BUILD_SEGMENT_TOOL: Tool = {
   },
 };
 
-function executeTool(name: string, input: unknown, bundle: DataBundle): unknown {
+const SAVE_CAMPAIGN_PLAN_TOOL: Tool = {
+  name: 'save_campaign_plan',
+  description:
+    'Persist the campaign variant the user has just confirmed. Only call this AFTER the user has explicitly approved a specific variant from the most recent build_segment result — never in the same turn as build_segment, and never on an assumed or default variant.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      confirmedVariantIndex: {
+        type: 'number',
+        description:
+          '0-based index into the most recent build_segment variants[] that the user approved',
+      },
+    },
+    required: ['confirmedVariantIndex'],
+  },
+};
+
+function executeTool(name: string, input: unknown, bundle: DataBundle, sessionId: string): unknown {
   switch (name) {
     case 'size_audience':
       return queryAep(bundle, input as QueryAepInput);
     case 'score_propensity':
       return runPropensityModel(bundle, input as RunPropensityModelInput);
-    case 'build_segment':
-      return { ok: true, note: 'Campaign variants generated and shown to the presenter.' };
+    case 'build_segment': {
+      const payload = buildCampaignPayload(input as BuildSegmentInput, bundle);
+      lastBuiltPayload.set(sessionId, payload);
+      return payload;
+    }
+    case 'save_campaign_plan': {
+      const payload = lastBuiltPayload.get(sessionId);
+      if (!payload) {
+        return {
+          ok: false,
+          error: 'No campaign has been built yet this session — call build_segment first.',
+        };
+      }
+      const { confirmedVariantIndex } = input as { confirmedVariantIndex?: number };
+      try {
+        const record = toCoursePlanRecord(
+          payload,
+          confirmedVariantIndex ?? payload.recommendedVariantIndex,
+        );
+        planCounter++;
+        const id = `plan-${Date.now()}-${planCounter}`;
+        const plan = { id, ...record };
+        appendCoursePlan(sessionId, plan);
+        return { ok: true, plan };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { ok: false, error: message };
+      }
+    }
     default:
       return { ok: true };
   }
 }
 
-const SYSTEM_PROMPT = `You are the Marketing Intelligence assistant for UNSW Online's lifelong learning alumni engagement tool.
+const CAMPAIGN_SYSTEM_PROMPT = `You are the Campaign Planner assistant embedded in UNSW Online's Course Intelligence tool.
 
-The tool has four tabs — Signals, Cohorts, Segments, and Course Intelligence — each with a live data view.
+Your job is to help a marketer design a data-grounded campaign for a specific course — one careful step at a time, like a strategist collecting a brief before acting, never a tool that fires on a vague request.
 
 You have four tools available:
 
+1. 'size_audience' — queries the real alumni database by criteria (industry, seniority, state, recent career signal) and returns a real matched count. Call this before quoting any audience size.
+
+2. 'score_propensity' — scores real alumni propensity to enrol in a specific course, optionally restricted to alumniId values from a prior size_audience result. Call this before quoting any conversion or enrolment estimate.
+
+3. 'build_segment' — call once you know the course and the objective, and have grounded at least one variant in a real size_audience/score_propensity number. Produces 2-3 variants spanning different strategies, each with an honest confidence level.
+
+4. 'save_campaign_plan' — call ONLY after the user has explicitly said which variant to proceed with. Never call this in the same turn as build_segment — present the variants first and wait for their reply.
+
+Conversation discipline:
+- If the course name or the objective is missing or ambiguous, ask a clarifying question before calling any tool. Do not guess.
+- Ground every number in a real tool result — never invent an eligiblePool, propensity score, or conversion rate.
+- After build_segment, summarise the variants and explicitly ask which one to proceed with (or whether to adjust anything). Do not call save_campaign_plan until they answer.
+- Keep responses concise. Use **bold** for key numbers and course names.`;
+
+const BRIEF_SYSTEM_PROMPT = `You are the Marketing Intelligence assistant guiding a live walkthrough of UNSW Online's alumni engagement tool.
+
+The tool has four tabs — Signals, Cohorts, Segments, and Course Intelligence — each with a live data view.
+
+You have three tools available:
+
 1. 'spotlight' — call it BEFORE narrating each section to move the presenter card to the relevant UI element. Targets: signalsFeed, cohortsChart, segmentsResult, ciReasoning, ciRecommendations.
 
-2. 'size_audience' — queries the real alumni database by criteria (industry, seniority, state, recent career signal) and returns a real matched count. Call this before quoting any audience size.
+2. 'size_audience' — queries the real alumni database by criteria and returns a real matched count. Call this before quoting any audience size.
 
-3. 'score_propensity' — scores real alumni propensity to enrol in a specific course, optionally restricted to alumniId values from a prior size_audience result. Call this before quoting any conversion or enrolment estimate for a course.
+3. 'score_propensity' — scores real alumni propensity to enrol in a specific course. Call this before quoting any conversion or enrolment estimate.
 
-4. 'build_segment' — call this whenever the user asks to launch a course, build a campaign, target an audience, or promote anything. Before calling it, call 'size_audience' and/or 'score_propensity' to ground every variant in a real number from this conversation — never invent an eligiblePool. Produce 2-3 variants spanning different strategies (e.g. a high-propensity variant scored via score_propensity, a broad-reach variant sized via size_audience alone, and a re-engagement variant targeting a dormant or course-recency signal). Every variant needs a dataSource string citing the literal tool call that produced its numbers, and an honest confidence level — 'High' only when both audience size and propensity are real tool results, 'Low' when you had to assume. After calling it, briefly confirm what you built, which variant you recommend, and why.
+Give a tight, narrated tour across whichever tabs are relevant to the user's question — spotlight each widget as you speak about it. Use **bold** for key numbers and course names. Keep it concise; this is a live demo.`;
 
-Keep responses concise and presenter-friendly. Use **bold** for key numbers and course names.`;
+function toolsForMode(mode: ChatMode): Tool[] {
+  return mode === 'campaign'
+    ? [SIZE_AUDIENCE_TOOL, SCORE_PROPENSITY_TOOL, BUILD_SEGMENT_TOOL, SAVE_CAMPAIGN_PLAN_TOOL]
+    : [SPOTLIGHT_TOOL, SIZE_AUDIENCE_TOOL, SCORE_PROPENSITY_TOOL];
+}
+
+function systemPromptForMode(mode: ChatMode): string {
+  return mode === 'campaign' ? CAMPAIGN_SYSTEM_PROMPT : BRIEF_SYSTEM_PROMPT;
+}
 
 function sse(event: string, data: Record<string, unknown>): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const body = (await req.json().catch(() => ({}))) as { prompt?: string; sessionId?: string };
+  const body = (await req.json().catch(() => ({}))) as {
+    prompt?: string;
+    sessionId?: string;
+    mode?: string;
+  };
   const prompt = body.prompt?.trim();
   const sessionId = body.sessionId ?? 'default';
+  const mode: ChatMode = body.mode === 'campaign' ? 'campaign' : 'brief';
 
   if (!prompt) {
     return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
   }
 
+  setSession(sessionId, {});
+
   const bundle = await getDataBundle();
-  const history = sessions.get(sessionId) ?? [];
+  const historyKey = `${sessionId}:${mode}`;
+  const history = sessions.get(historyKey) ?? [];
   const messages: MessageParam[] = [...history, { role: 'user', content: prompt }];
 
   const encoder = new TextEncoder();
@@ -262,8 +353,8 @@ export async function POST(req: Request): Promise<Response> {
           const sdkStream = client.messages.stream({
             model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
             max_tokens: 8192,
-            system: SYSTEM_PROMPT,
-            tools: [SPOTLIGHT_TOOL, SIZE_AUDIENCE_TOOL, SCORE_PROPENSITY_TOOL, BUILD_SEGMENT_TOOL],
+            system: systemPromptForMode(mode),
+            tools: toolsForMode(mode),
             messages,
           });
 
@@ -296,20 +387,6 @@ export async function POST(req: Request): Promise<Response> {
                     // malformed input — skip
                   }
                   send(sse('spotlight', { target: parsed.target ?? '', tag: parsed.tag ?? '' }));
-                } else if (currentToolName === 'build_segment') {
-                  try {
-                    const parsed = JSON.parse(currentToolInput) as BuildSegmentInput;
-                    const payload = buildCampaignPayload(parsed, bundle);
-                    send(
-                      sse('segment_built', {
-                        title: `Campaign · ${parsed.courseName}`,
-                        payload: JSON.stringify(payload),
-                      }),
-                    );
-                    send(sse('tool_call', { name: 'build_segment ✓', input: '' }));
-                  } catch {
-                    send(sse('tool_call', { name: 'build_segment (parse error)', input: '' }));
-                  }
                 } else {
                   send(sse('tool_call', { name: currentToolName, input: currentToolInput }));
                 }
@@ -328,17 +405,32 @@ export async function POST(req: Request): Promise<Response> {
           messages.push({ role: 'assistant', content: finalMessage.content });
 
           if (finalMessage.stop_reason === 'tool_use') {
-            // Execute each tool for real and return its result and loop
-            const toolResults: MessageParam['content'] = finalMessage.content
-              .filter((b) => b.type === 'tool_use')
-              .map((b) => {
-                const block = b as ToolUseBlock;
-                return {
-                  type: 'tool_result' as const,
-                  tool_use_id: block.id,
-                  content: JSON.stringify(executeTool(block.name, block.input, bundle)),
-                };
-              });
+            // Execute each tool exactly once; derive both the tool_result message
+            // and any side-channel SSE events (e.g. campaign_saved) from the same result.
+            const toolUseBlocks = finalMessage.content.filter(
+              (b): b is ToolUseBlock => b.type === 'tool_use',
+            );
+            const toolExecutions = toolUseBlocks.map((block) => ({
+              block,
+              result: executeTool(block.name, block.input, bundle, sessionId),
+            }));
+
+            for (const { block, result } of toolExecutions) {
+              if (block.name === 'save_campaign_plan') {
+                const saved = result as { ok: boolean; plan?: unknown };
+                if (saved.ok && saved.plan) {
+                  send(sse('campaign_saved', { plan: JSON.stringify(saved.plan) }));
+                }
+              }
+            }
+
+            const toolResults: MessageParam['content'] = toolExecutions.map(
+              ({ block, result }) => ({
+                type: 'tool_result' as const,
+                tool_use_id: block.id,
+                content: JSON.stringify(result),
+              }),
+            );
             messages.push({ role: 'user', content: toolResults });
           } else {
             break;
@@ -346,7 +438,7 @@ export async function POST(req: Request): Promise<Response> {
         }
 
         // Persist history (cap at 40 to avoid unbounded growth)
-        sessions.set(sessionId, messages.slice(-40));
+        sessions.set(historyKey, messages.slice(-40));
         send(sse('done', {}));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

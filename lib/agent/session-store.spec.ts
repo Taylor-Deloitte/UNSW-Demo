@@ -4,6 +4,7 @@ import {
   setSession,
   appendSegment,
   appendCampaign,
+  appendCoursePlan,
   sessionCount,
 } from './session-store';
 
@@ -19,6 +20,7 @@ describe('session-store', () => {
     expect(s!.title).toBe('demo');
     expect(s!.segments).toEqual([]);
     expect(s!.campaigns).toEqual([]);
+    expect(s!.coursePlans).toEqual([]);
   });
 
   it('appends segments', () => {
@@ -33,6 +35,26 @@ describe('session-store', () => {
     setSession('s2', {});
     appendCampaign('s2', { id: 'camp-1', segmentId: 'seg-1', channel: 'email' });
     expect(getSession('s2')!.campaigns).toHaveLength(1);
+  });
+
+  it('appends course plans', () => {
+    setSession('s3', {});
+    appendCoursePlan('s3', {
+      id: 'plan-1',
+      courseName: 'AI for Leaders',
+      variantName: 'High-propensity reach',
+      classification: 'high-propensity',
+      eligiblePool: 120,
+      estimatedEnrolments: 14,
+      estimatedRevenueAud: 16800,
+      confidence: 'High',
+      crmCampaign: { endpoint: 'https://api.dynamics.com/v9.2/campaigns' },
+      aepSegment: { endpoint: 'https://platform.adobe.io/data/core/ups/segment/definitions' },
+    });
+    const s = getSession('s3')!;
+    expect(s.coursePlans).toHaveLength(1);
+    expect(s.coursePlans[0].courseName).toBe('AI for Leaders');
+    expect(s.coursePlans[0].createdAt).toBeDefined();
   });
 
   it('evicts oldest when over 100', () => {

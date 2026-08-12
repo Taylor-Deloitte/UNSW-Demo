@@ -1,4 +1,5 @@
 import type { DataBundle } from '../types';
+import type { CoursePlanRecord } from './session-store';
 
 export interface AudienceFilterInput {
   industries?: string[];
@@ -134,5 +135,25 @@ export function buildCampaignPayload(input: BuildSegmentInput, bundle: DataBundl
       'Attach to an AJO journey for email delivery',
       'Set a hold-out group to measure real uplift',
     ],
+  };
+}
+
+export function toCoursePlanRecord(
+  payload: ReturnType<typeof buildCampaignPayload>,
+  variantIndex: number,
+): Omit<CoursePlanRecord, 'id' | 'createdAt'> {
+  const variant =
+    payload.variants[variantIndex] ?? payload.variants[payload.recommendedVariantIndex];
+  if (!variant) throw new Error('buildCampaignPayload produced no variants');
+  return {
+    courseName: payload.course,
+    variantName: variant.variantName,
+    classification: variant.classification,
+    eligiblePool: variant.eligiblePool,
+    estimatedEnrolments: variant.estimatedEnrolments,
+    estimatedRevenueAud: variant.estimatedRevenueAud,
+    confidence: variant.confidence,
+    crmCampaign: payload.crmCampaign,
+    aepSegment: payload.aepSegment,
   };
 }

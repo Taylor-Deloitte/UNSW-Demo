@@ -9,6 +9,7 @@ import {
   buildCampaignPayload,
   emailConsentRate,
   pqlFromFilter,
+  toCoursePlanRecord,
   type BuildSegmentInput,
 } from './build-campaign-payload';
 
@@ -109,6 +110,49 @@ describe('build-campaign-payload', () => {
     const payload = buildCampaignPayload(input, bundle);
     expect(payload.coursePriceAud).toBeNull();
     expect(payload.variants[0].estimatedRevenueAud).toBeNull();
+  });
+
+  describe('toCoursePlanRecord', () => {
+    it('extracts the confirmed variant into a CoursePlanRecord shape', () => {
+      const input = makeInput();
+      const payload = buildCampaignPayload(input, bundle);
+      const record = toCoursePlanRecord(payload, 0);
+      expect(record.courseName).toBe(input.courseName);
+      expect(record.variantName).toBe('High-propensity reach');
+      expect(record.classification).toBe('high-propensity');
+      expect(record.eligiblePool).toBe(120);
+      expect(record.estimatedEnrolments).toBe(14);
+      expect(record.estimatedRevenueAud).toBe(payload.variants[0].estimatedRevenueAud);
+      expect(record.confidence).toBe('High');
+      expect(record.crmCampaign).toBe(payload.crmCampaign);
+      expect(record.aepSegment).toBe(payload.aepSegment);
+    });
+
+    it('extracts a non-recommended variant when a different index is confirmed', () => {
+      const input = makeInput();
+      const payload = buildCampaignPayload(input, bundle);
+      const record = toCoursePlanRecord(payload, 1);
+      expect(record.variantName).toBe('Broad reach');
+      expect(record.classification).toBe('broad-reach');
+      expect(record.eligiblePool).toBe(800);
+    });
+
+    it('falls back to recommendedVariantIndex when variantIndex is out of range', () => {
+      const input = makeInput();
+      const payload = buildCampaignPayload(input, bundle);
+      const record = toCoursePlanRecord(payload, 99);
+      expect(record.variantName).toBe(
+        payload.variants[payload.recommendedVariantIndex].variantName,
+      );
+    });
+
+    it('throws when the payload has no variants at all', () => {
+      const input = makeInput({ variants: [] });
+      const payload = buildCampaignPayload(input, bundle);
+      expect(() => toCoursePlanRecord(payload, 0)).toThrow(
+        'buildCampaignPayload produced no variants',
+      );
+    });
   });
 });
 

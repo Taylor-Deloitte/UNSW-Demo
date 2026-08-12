@@ -17,7 +17,8 @@ export function PrimaryNav() {
         <img src={brand.wordmark} alt="UNSW" style={{ height: 36, width: 'auto' }} />
         <div className="flex items-center" style={{ gap: 24, fontSize: 15 }}>
           {tabs.map((t) => {
-            const active = pathname === t.href || (pathname === '/' && t.href === '/segments');
+            const active =
+              pathname === t.href || (pathname === '/' && t.href === '/course-intelligence');
             return (
               <Link
                 key={t.href}

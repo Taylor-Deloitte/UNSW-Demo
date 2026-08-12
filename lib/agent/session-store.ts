@@ -12,10 +12,25 @@ export interface CampaignRecord {
   createdAt: string;
 }
 
+export interface CoursePlanRecord {
+  id: string;
+  courseName: string;
+  variantName: string;
+  classification: 'high-propensity' | 'broad-reach' | 're-engagement';
+  eligiblePool: number;
+  estimatedEnrolments: number;
+  estimatedRevenueAud: number | null;
+  confidence: 'High' | 'Medium' | 'Low';
+  crmCampaign: unknown;
+  aepSegment: unknown;
+  createdAt: string;
+}
+
 export interface SessionMeta {
   title?: string;
   segments: SegmentRecord[];
   campaigns: CampaignRecord[];
+  coursePlans: CoursePlanRecord[];
   createdAt: string;
   lastAccessedAt: string;
 }
@@ -46,6 +61,7 @@ export function setSession(id: string, meta: Partial<SessionMeta>): void {
     title: meta.title ?? existing?.title,
     segments: existing?.segments ?? [],
     campaigns: existing?.campaigns ?? [],
+    coursePlans: existing?.coursePlans ?? [],
     createdAt: existing?.createdAt ?? now,
     lastAccessedAt: now,
   };
@@ -71,6 +87,13 @@ export function appendCampaign(id: string, camp: Omit<CampaignRecord, 'createdAt
   const s = store.get(id);
   if (!s) throw new Error(`session ${id} not found`);
   s.campaigns.push({ ...camp, createdAt: new Date().toISOString() });
+  touch(id);
+}
+
+export function appendCoursePlan(id: string, plan: Omit<CoursePlanRecord, 'createdAt'>): void {
+  const s = store.get(id);
+  if (!s) throw new Error(`session ${id} not found`);
+  s.coursePlans.push({ ...plan, createdAt: new Date().toISOString() });
   touch(id);
 }
 

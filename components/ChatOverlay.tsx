@@ -1,15 +1,34 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { streamChat } from '../lib/chat-stream';
 import { useSessionId } from '../hooks/useSessionId';
 import { useVoice } from '../hooks/useVoice';
-import { usePayload } from './PayloadContext';
 import { Presenter, type PresenterHandle } from './Presenter';
-import { BaselineStream, BASELINE_STREAM_WIDTH } from './BaselineStream';
+import { isPresenterWidgetId } from '../lib/presenter/widgets';
+import { PRESENTER_WIDGET_ROUTES } from '../lib/presenter/widget-routes';
 import type { PresenterStep } from '../lib/presenter/types';
 
-type Mode = 'closed' | 'chat' | 'present';
+type Mode = 'closed' | 'brief';
+
+// Polls for a DOM node rather than relying on a fixed delay after navigation,
+// since Next.js client-side route transitions don't resolve to a fixed timing.
+function waitForElement(id: string, timeoutMs = 2000): Promise<void> {
+  return new Promise((resolve) => {
+    if (document.getElementById(id) !== null) {
+      resolve();
+      return;
+    }
+    const start = Date.now();
+    const interval = window.setInterval(() => {
+      if (document.getElementById(id) !== null || Date.now() - start > timeoutMs) {
+        window.clearInterval(interval);
+        resolve();
+      }
+    }, 50);
+  });
+}
 
 export function ChatOverlay() {
   const [mode, setMode] = useState<Mode>('closed');
@@ -19,14 +38,36 @@ export function ChatOverlay() {
   const presenterRef = useRef<PresenterHandle>(null);
   const sessionId = useSessionId();
   const voice = useVoice();
-  const { show: showPayload } = usePayload();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const switchMode = useCallback(
-    (next: Mode) => {
-      setMode((prev) => (prev === next ? 'closed' : next));
+  // Tracks the route the browser is actually on. Synced from usePathname() on real
+  // navigation, but also updated optimistically the instant we call router.push() —
+  // usePathname() only reflects the new route after a render some time later, which
+  // would otherwise be stale for a second spotlight call issued before that render.
+  const currentRouteRef = useRef(pathname);
+  useEffect(() => {
+    currentRouteRef.current = pathname;
+  }, [pathname]);
+
+  const onSpotlight = useCallback(
+    async (target: string, tag: string) => {
+      if (isPresenterWidgetId(target)) {
+        const owningRoute = PRESENTER_WIDGET_ROUTES[target];
+        if (owningRoute !== currentRouteRef.current) {
+          currentRouteRef.current = owningRoute;
+          router.push(owningRoute);
+          await waitForElement(target);
+        }
+      }
+      presenterRef.current?.beginStep(target, tag);
     },
-    [],
+    [router],
   );
+
+  const toggleMode = useCallback(() => {
+    setMode((prev) => (prev === 'brief' ? 'closed' : 'brief'));
+  }, []);
 
   const ask = useCallback(
     async (prompt: string) => {
@@ -37,15 +78,14 @@ export function ChatOverlay() {
       voice.stop();
 
       try {
-        await streamChat(prompt, sessionId, {
-          onSpotlight: (target, tag) => presenterRef.current?.beginStep(target, tag),
+        await streamChat(prompt, sessionId, 'brief', {
+          onSpotlight,
           onText: (delta) => {
             presenterRef.current?.appendText(delta);
             voice.onDelta(delta);
           },
           onToolCall: (name, input) =>
             presenterRef.current?.appendTool(`${name} · ${input.slice(0, 40)}`),
-          onSegmentBuilt: (title, payload) => showPayload(title, payload),
           onThinkingSignal: (phase) => presenterRef.current?.setReasoning(phase === 'start'),
           onError: (message) => presenterRef.current?.appendText(`\n\n**Error:** ${message}`),
         });
@@ -55,67 +95,46 @@ export function ChatOverlay() {
         voice.flush();
       }
     },
-    [streaming, sessionId, voice, showPayload],
+    [streaming, sessionId, voice, onSpotlight],
   );
-
-  const streamOpen = mode === 'chat';
 
   return (
     <>
-      {/* Mode toggle buttons — fixed top-right */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 16,
-          right: mode === 'chat' ? BASELINE_STREAM_WIDTH + 12 : 12,
-          zIndex: 70,
-          display: 'flex',
-          gap: 0,
-          transition: 'right .3s ease',
-        }}
-      >
-        <ModeButton
-          label="Chat"
-          icon="💬"
-          active={mode === 'chat'}
-          onClick={() => switchMode('chat')}
-          side="left"
-        />
-        <ModeButton
-          label="Present"
-          icon="▶"
-          active={mode === 'present'}
-          onClick={() => switchMode('present')}
-          side="right"
-        />
+      {/* Brief toggle — fixed top-right */}
+      <div style={{ position: 'fixed', top: 16, right: 12, zIndex: 70 }}>
+        <button
+          type="button"
+          onClick={toggleMode}
+          style={{
+            padding: '7px 14px',
+            border: '2px solid #000',
+            background: mode === 'brief' ? '#FFD100' : '#fff',
+            color: '#000',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            transition: 'background .15s ease',
+          }}
+        >
+          <span style={{ fontSize: 13 }}>✨</span>
+          Brief
+        </button>
       </div>
 
-      {/* Presenter card — always mounted so the ref stays live, but only visible in present mode */}
+      {/* Presenter card — always mounted so the ref stays live, visible only while briefing */}
       <Presenter
         ref={presenterRef}
         pinnedQuestion={pinned}
-        streamOpen={streamOpen}
-        visible={mode === 'present' && (streaming || steps.length > 1)}
-        hideText={mode === 'present'}
+        streamOpen={false}
+        visible={mode === 'brief' && (streaming || steps.length > 1)}
         onStepsChange={setSteps}
       />
 
-      {/* Baseline stream sidebar — chat mode only */}
-      {mode === 'chat' && (
-        <BaselineStream
-          pinnedQuestion={pinned}
-          steps={steps}
-          streaming={streaming}
-          voiceEnabled={voice.enabled}
-          onToggleVoice={voice.toggle}
-          onSubmit={ask}
-          onClose={() => setMode('closed')}
-        />
-      )}
-
-      {/* Present mode: floating send box so user can type a question */}
-      {mode === 'present' && (
-        <PresentModeComposer
+      {mode === 'brief' && (
+        <BriefComposer
           streaming={streaming}
           voiceEnabled={voice.enabled}
           onToggleVoice={voice.toggle}
@@ -126,46 +145,7 @@ export function ChatOverlay() {
   );
 }
 
-function ModeButton({
-  label,
-  icon,
-  active,
-  onClick,
-  side,
-}: {
-  label: string;
-  icon: string;
-  active: boolean;
-  onClick: () => void;
-  side: 'left' | 'right';
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: '7px 13px',
-        border: '2px solid #000',
-        borderRight: side === 'left' ? '1px solid #000' : '2px solid #000',
-        borderLeft: side === 'right' ? '1px solid #000' : '2px solid #000',
-        background: active ? '#FFD100' : '#fff',
-        color: '#000',
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 5,
-        transition: 'background .15s ease',
-      }}
-    >
-      <span style={{ fontSize: 13 }}>{icon}</span>
-      {label}
-    </button>
-  );
-}
-
-function PresentModeComposer({
+function BriefComposer({
   streaming,
   voiceEnabled,
   onToggleVoice,
@@ -204,7 +184,7 @@ function PresentModeComposer({
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         disabled={streaming}
-        placeholder={streaming ? 'Speaking…' : 'Ask about the alumni data…'}
+        placeholder={streaming ? 'Speaking…' : 'Ask for a briefing on the alumni data…'}
         autoComplete="off"
         style={{
           flex: 1,

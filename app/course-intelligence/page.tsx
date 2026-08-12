@@ -5,6 +5,10 @@ import { QueryBand, QueryStatic, QueryToken } from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import { usePayload } from '../../components/PayloadContext';
 import { useServerTool } from '../../hooks/useServerTool';
+import { useSessionId } from '../../hooks/useSessionId';
+import { CampaignPlannerChat } from '../../components/CampaignPlannerChat';
+import { SavedPlansPanel } from '../../components/SavedPlansPanel';
+import type { CoursePlanRecord } from '../../lib/agent/session-store';
 import {
   getCourseIntelligence,
   type AgentStep,
@@ -61,8 +65,10 @@ const PCT = new Intl.NumberFormat('en-AU', {
 export default function CourseIntelligencePage() {
   const [q, setQ] = useState<CiQuery>(DEFAULT_Q);
   const [visibleSteps, setVisibleSteps] = useState(0);
+  const [plans, setPlans] = useState<CoursePlanRecord[]>([]);
   const { show } = usePayload();
   const { call } = useServerTool();
+  const sessionId = useSessionId();
 
   const result: CourseIntelligenceResult = useMemo(
     () => getCourseIntelligence(q.cohort, q.signal, q.window),
@@ -100,6 +106,21 @@ export default function CourseIntelligencePage() {
       limit: 10,
     }).catch(() => {});
   }, [q, call, result.recommendations]);
+
+  // Load any campaign plans already saved for this session
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    fetch(`/api/course-planner?sessionId=${encodeURIComponent(sessionId)}`)
+      .then((res) => (res.ok ? res.json() : { plans: [] }))
+      .then((data: { plans?: CoursePlanRecord[] }) => {
+        if (!cancelled) setPlans(data.plans ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
 
   const top = result.recommendations[0];
   const cohortLabel = COHORT_OPTIONS.find((o) => o.value === q.cohort)?.label ?? q.cohort;
@@ -157,6 +178,12 @@ export default function CourseIntelligencePage() {
           onPushToCrm={onPushToCrm}
         />
       </div>
+
+      <CoursePlannerSection
+        sessionId={sessionId}
+        plans={plans}
+        onPlanSaved={(plan) => setPlans((prev) => [...prev, plan])}
+      />
 
       <ToolFooter chips={CHIPS} />
     </div>
@@ -235,7 +262,11 @@ function AgentReasoningBand({
 
 function RecommendationsColumn({ recommendations }: { recommendations: CourseRecommendation[] }) {
   return (
-    <div id="ciRecommendations" className="flex flex-1 flex-col" style={{ padding: '22px 30px 22px 36px' }}>
+    <div
+      id="ciRecommendations"
+      className="flex flex-1 flex-col"
+      style={{ padding: '22px 30px 22px 36px' }}
+    >
       <div
         className="text-ink"
         style={{
@@ -436,6 +467,30 @@ function SideColumn({
         >
           Draft AJO campaign
         </button>
+      </div>
+    </div>
+  );
+}
+
+function CoursePlannerSection({
+  sessionId,
+  plans,
+  onPlanSaved,
+}: {
+  sessionId: string;
+  plans: CoursePlanRecord[];
+  onPlanSaved: (plan: CoursePlanRecord) => void;
+}) {
+  return (
+    <div
+      className="flex-none"
+      style={{ borderTop: '2px solid #000', padding: '22px 36px', display: 'flex', gap: 24 }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <CampaignPlannerChat sessionId={sessionId} onPlanSaved={onPlanSaved} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <SavedPlansPanel plans={plans} />
       </div>
     </div>
   );

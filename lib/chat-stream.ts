@@ -1,9 +1,11 @@
+export type ChatMode = 'campaign' | 'brief';
+
 export interface StreamCallbacks {
   onThinkingSignal?: (phase: 'start' | 'end') => void;
   onText?: (text: string) => void;
   onToolCall?: (name: string, input: string) => void;
   onSpotlight?: (target: string, tag: string) => void;
-  onSegmentBuilt?: (title: string, payload: unknown) => void;
+  onCampaignSaved?: (plan: unknown) => void;
   onError?: (message: string) => void;
 }
 
@@ -27,11 +29,11 @@ function dispatch(frame: string, cb: StreamCallbacks): void {
     case 'spotlight':
       cb.onSpotlight?.(data['target'] ?? '', data['tag'] ?? '');
       break;
-    case 'segment_built': {
-      const raw = data['payload'];
+    case 'campaign_saved': {
+      const raw = data['plan'];
       if (raw) {
         try {
-          cb.onSegmentBuilt?.(data['title'] ?? 'Campaign', JSON.parse(raw) as unknown);
+          cb.onCampaignSaved?.(JSON.parse(raw) as unknown);
         } catch {
           // malformed payload — skip
         }
@@ -49,12 +51,13 @@ function dispatch(frame: string, cb: StreamCallbacks): void {
 export async function streamChat(
   prompt: string,
   sessionId: string,
+  mode: ChatMode,
   cb: StreamCallbacks,
 ): Promise<void> {
   const res = await fetch('/api/overlay-chat', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ prompt, sessionId }),
+    body: JSON.stringify({ prompt, sessionId, mode }),
   });
   if (!res.ok) {
     let message = `request failed: ${res.status}`;
