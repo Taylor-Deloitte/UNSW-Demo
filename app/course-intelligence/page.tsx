@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { QueryBand, QueryStatic, QueryToken } from '../../components/QueryBand';
 import { ToolFooter } from '../../components/ToolFooter';
 import { usePayload } from '../../components/PayloadContext';
 import { useServerTool } from '../../hooks/useServerTool';
@@ -16,8 +15,6 @@ import {
   type CourseIntelligenceResult,
   type CourseRecommendation,
   type MarketTrend,
-  type Signal,
-  type Window,
 } from '../../lib/tab-data/course-intelligence-fixture';
 import { buildCrmCampaignPayload } from '../../lib/handoff/payloads';
 
@@ -28,33 +25,7 @@ const CHIPS = [
   { name: 'query_linkedin' },
 ];
 
-const COHORT_OPTIONS = [
-  { value: 'cs', label: 'CS graduates' },
-  { value: 'eng', label: 'Engineering graduates' },
-  { value: 'commerce', label: 'Commerce graduates' },
-  { value: 'all', label: 'all alumni' },
-] as const;
-
-const SIGNAL_OPTIONS = [
-  { value: 'role-change', label: 'changed role' },
-  { value: 'promoted', label: 'were promoted' },
-  { value: 'redundancy', label: 'are at redundancy risk' },
-  { value: 'any', label: 'had any signal' },
-] as const;
-
-const WINDOW_OPTIONS = [
-  { value: '6m', label: '6 months' },
-  { value: '12m', label: '12 months' },
-  { value: '24m', label: '24 months' },
-] as const;
-
-interface CiQuery {
-  cohort: Cohort;
-  signal: Signal;
-  window: Window;
-}
-
-const DEFAULT_Q: CiQuery = { cohort: 'cs', signal: 'role-change', window: '12m' };
+const DEFAULT_Q = { cohort: 'cs' as const, signal: 'role-change' as const, window: '12m' as const };
 
 const PCT = new Intl.NumberFormat('en-AU', {
   style: 'percent',
@@ -62,7 +33,7 @@ const PCT = new Intl.NumberFormat('en-AU', {
 });
 
 export default function CourseIntelligencePage() {
-  const [q, setQ] = useState<CiQuery>(DEFAULT_Q);
+  const q = DEFAULT_Q;
   const [plans, setPlans] = useState<CoursePlanRecord[]>([]);
   const { show } = usePayload();
   const { call } = useServerTool();
@@ -112,7 +83,7 @@ export default function CourseIntelligencePage() {
   }, [sessionId]);
 
   const top = result.recommendations[0];
-  const cohortLabel = COHORT_OPTIONS.find((o) => o.value === q.cohort)?.label ?? q.cohort;
+  const cohortLabel = 'CS graduates';
 
   const onPushToCrm = () => {
     show(
@@ -129,30 +100,6 @@ export default function CourseIntelligencePage() {
 
   return (
     <div className="flex flex-1 flex-col" style={{ minHeight: 0 }}>
-      <QueryBand>
-        <QueryStatic>Show opportunities for</QueryStatic>
-        <QueryToken
-          value={q.cohort}
-          onChange={(v) => setQ({ ...q, cohort: v as Cohort })}
-          options={[...COHORT_OPTIONS]}
-          minWidth={240}
-        />
-        <QueryStatic>who</QueryStatic>
-        <QueryToken
-          value={q.signal}
-          onChange={(v) => setQ({ ...q, signal: v as Signal })}
-          options={[...SIGNAL_OPTIONS]}
-          minWidth={220}
-        />
-        <QueryStatic>in the last</QueryStatic>
-        <QueryToken
-          value={q.window}
-          onChange={(v) => setQ({ ...q, window: v as Window })}
-          options={[...WINDOW_OPTIONS]}
-          minWidth={160}
-        />
-      </QueryBand>
-
       <CoursePlannerSection
         sessionId={sessionId}
         plans={plans}
