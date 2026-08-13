@@ -43,8 +43,11 @@ export function useVoice(onReveal: (text: string) => void) {
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const revealIntervalRef = useRef<number | null>(null);
 
-  // Queue: text chunks waiting to be fetched + played
-  const queueRef = useRef<string[]>([]);
+  // Queue: text chunks waiting to be fetched + played, interleaved with actions
+  // (e.g. presenter-tab navigation) so they stay paced with narration instead of
+  // running ahead of it.
+  type QueueItem = { kind: 'text'; text: string } | { kind: 'action'; run: () => void | Promise<void> };
+  const queueRef = useRef<QueueItem[]>([]);
   const drainingRef = useRef(false);
 
   // Incomplete sentence buffer: accumulates deltas until a boundary is hit
@@ -132,12 +135,18 @@ export function useVoice(onReveal: (text: string) => void) {
     [getCtx, revealOverTime],
   );
 
-  // Serial queue drain: fetch and play one chunk at a time in order
+  // Serial queue drain: fetch and play one chunk at a time in order, running any
+  // interleaved actions (e.g. tab navigation) exactly when their turn comes up
   const drain = useCallback(async () => {
     if (drainingRef.current) return;
     drainingRef.current = true;
     while (queueRef.current.length > 0) {
-      const text = queueRef.current.shift()!;
+      const item = queueRef.current.shift()!;
+      if (item.kind === 'action') {
+        await item.run();
+        continue;
+      }
+      const { text } = item;
       if (!enabledRef.current) {
         onRevealRef.current(text);
         continue;
@@ -160,7 +169,22 @@ export function useVoice(onReveal: (text: string) => void) {
         onRevealRef.current(text);
         return;
       }
-      queueRef.current.push(text);
+      queueRef.current.push({ kind: 'text', text });
+      void drain();
+    },
+    [drain],
+  );
+
+  // Queues an action (e.g. presenter spotlight/navigation) to run in its turn,
+  // in step with narration. Runs immediately when voice is off, matching the
+  // instant reveal used for text in that mode.
+  const enqueueAction = useCallback(
+    (run: () => void | Promise<void>) => {
+      if (!enabledRef.current) {
+        void run();
+        return;
+      }
+      queueRef.current.push({ kind: 'action', run });
       void drain();
     },
     [drain],
@@ -212,5 +236,5 @@ export function useVoice(onReveal: (text: string) => void) {
     clearRevealInterval();
   }, [clearRevealInterval]);
 
-  return { enabled, toggle, onDelta, flush, stop };
+  return { enabled, toggle, onDelta, flush, stop, enqueueAction };
 }

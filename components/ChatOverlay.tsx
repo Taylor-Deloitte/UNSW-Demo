@@ -64,19 +64,23 @@ export function ChatOverlay() {
     currentRouteRef.current = pathname;
   }, [pathname]);
 
+  // Queued through voice.enqueueAction so tab navigation happens in step with
+  // narration instead of racing ahead of it (see hooks/useVoice.ts).
   const onSpotlight = useCallback(
-    async (target: string, tag: string) => {
-      if (isPresenterWidgetId(target)) {
-        const owningRoute = PRESENTER_WIDGET_ROUTES[target];
-        if (owningRoute !== currentRouteRef.current) {
-          currentRouteRef.current = owningRoute;
-          router.push(owningRoute);
-          await waitForElement(target);
+    (target: string, tag: string) => {
+      voice.enqueueAction(async () => {
+        if (isPresenterWidgetId(target)) {
+          const owningRoute = PRESENTER_WIDGET_ROUTES[target];
+          if (owningRoute !== currentRouteRef.current) {
+            currentRouteRef.current = owningRoute;
+            router.push(owningRoute);
+            await waitForElement(target);
+          }
         }
-      }
-      presenterRef.current?.beginStep(target, tag);
+        presenterRef.current?.beginStep(target, tag);
+      });
     },
-    [router],
+    [router, voice],
   );
 
   const runTour = useCallback(async () => {
