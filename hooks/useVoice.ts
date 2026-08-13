@@ -5,13 +5,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const VOICE_ID = process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID ?? '';
 const API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY ?? '';
 
+// Playback speed multiplier applied to narration (both real TTS audio and the
+// text-pacing fallback), so the two stay in step with each other.
+const SPEECH_RATE = 1.5;
+
 // Fallback pacing when there's no real audio to time against (voice off, or TTS
 // unavailable/failed): approximates a comfortable narrated speaking pace so on-screen
 // text and tab navigation still stay in step with each other instead of flashing by.
 function estimateReadingDurationMs(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   const msPerWord = 340; // ~176 wpm
-  return Math.min(20000, Math.max(700, words * msPerWord));
+  return Math.min(20000, Math.max(700, (words * msPerWord) / SPEECH_RATE));
 }
 
 async function fetchAudio(text: string): Promise<ArrayBuffer | null> {
@@ -126,13 +130,14 @@ export function useVoice(onReveal: (text: string) => void) {
           (decoded) => {
             const source = ctx.createBufferSource();
             source.buffer = decoded;
+            source.playbackRate.value = SPEECH_RATE;
             source.connect(ctx.destination);
             currentSourceRef.current = source;
             source.onended = () => {
               currentSourceRef.current = null;
             };
             source.start();
-            void revealOverTime(text, decoded.duration * 1000).then(resolve);
+            void revealOverTime(text, (decoded.duration / SPEECH_RATE) * 1000).then(resolve);
           },
           () => {
             // decode error: reveal immediately so the tour isn't stuck waiting

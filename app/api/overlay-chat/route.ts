@@ -15,6 +15,7 @@ import {
 } from '../../../lib/agent/build-campaign-payload';
 import { setSession, appendCoursePlan } from '../../../lib/agent/session-store';
 import { getChatHistory, saveChatHistory, getCampaignDraft, saveCampaignDraft } from '../../../lib/db';
+import { buildTourSnapshot, formatTourFacts } from '../../../lib/agent/tour-snapshot';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -297,6 +298,20 @@ Style rules (non-negotiable):
 - Use **bold** for key numbers and course names.
 - Never say "this tab shows" or "here you can see". Just say the thing.`;
 
+// Non-data part of the brief tour prompt: tone, order, and pacing rules. The data facts are
+// assembled separately at request time (see buildBriefPrompt) so they're always current.
+const TOUR_INSTRUCTIONS =
+  'Walk me through this tool: 4 tabs, tight and conversational, like you\'re pointing at a screen with a CMO in the room. ' +
+  'Spotlight each widget before you speak. Lead with the number or the insight, not with what the tab does. 2-3 sentences per tab, no filler.\n\n' +
+  'Go tab by tab in this order: Signals, Cohorts, Segments, Course Intelligence. Be direct.';
+
+// Assembles the full brief prompt fresh on every request: fixed tone/order instructions plus a
+// live data snapshot pulled from the same fixtures each tab renders from (lib/tab-data/*), so
+// the narration can never drift from what's actually on screen.
+function buildBriefPrompt(): string {
+  return `${TOUR_INSTRUCTIONS}\n\n${formatTourFacts(buildTourSnapshot())}`;
+}
+
 function toolsForMode(mode: ChatMode): Tool[] {
   return mode === 'campaign'
     ? [SIZE_AUDIENCE_TOOL, SCORE_PROPENSITY_TOOL, BUILD_SEGMENT_TOOL, SAVE_CAMPAIGN_PLAN_TOOL]
@@ -329,7 +344,8 @@ export async function POST(req: Request): Promise<Response> {
 
   const bundle = await getDataBundle();
   const history = (await getChatHistory<MessageParam>(sessionId, mode)) ?? [];
-  const messages: MessageParam[] = [...history, { role: 'user', content: prompt }];
+  const effectivePrompt = mode === 'brief' ? buildBriefPrompt() : prompt;
+  const messages: MessageParam[] = [...history, { role: 'user', content: effectivePrompt }];
 
   const encoder = new TextEncoder();
 

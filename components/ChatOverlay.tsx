@@ -14,17 +14,9 @@ type Mode = 'closed' | 'brief';
 
 const TOUR_PINNED_LABEL = 'Signals → Cohorts → Segments → Course Intelligence';
 
-const TOUR_PROMPT =
-  'Walk me through this tool: 4 tabs, tight and conversational, like you\'re pointing at a screen with a CMO in the room. ' +
-  'Spotlight each widget before you speak. Lead with the number or the insight, not with what the tab does. 2-3 sentences per tab, no filler.\n\n' +
-  'Here\'s exactly what\'s live on screen right now:\n\n' +
-  'Signals: 1,288 career moments detected this month across alumni: 418 promotions, 327 role changes, 256 course-profile gaps, 112 at redundancy risk. 214 are unactioned.\n\n' +
-  'Cohorts: Mid-career (786 alumni) has fallen 22 points since June; it maps cleanly to when a new email template shipped. ' +
-  'High-Signal (344 alumni) is at 71% engagement and still climbing. The divergence is the story.\n\n' +
-  'Segments: CS grads, promoted, outside Sydney, in the last 12 months, not enrolled in 3+ years; that\'s exactly 340 alumni. Ready to contact.\n\n' +
-  'Course Intelligence: AI for Leaders is #1: 214 matched alumni, 8.9% historical conversion, opportunity score 0.91. ' +
-  'Two catalogue gaps: Platform Engineering (340 alumni, no existing course) and AI Ethics & Governance (520 alumni, no existing course).\n\n' +
-  'Go tab by tab in that order. Be direct.';
+// The server assembles the full brief prompt (tone/order instructions + a live data snapshot)
+// for 'brief' mode — see buildBriefPrompt in app/api/overlay-chat/route.ts. This is just the trigger.
+const TOUR_PROMPT = 'Start the brief.';
 
 // Polls for a DOM node rather than relying on a fixed delay after navigation,
 // since Next.js client-side route transitions don't resolve to a fixed timing.
