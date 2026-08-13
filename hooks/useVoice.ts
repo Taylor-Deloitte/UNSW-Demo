@@ -5,9 +5,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const VOICE_ID = process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID ?? '';
 const API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY ?? '';
 
-// Playback speed multiplier applied to narration (both real TTS audio and the
-// text-pacing fallback), so the two stay in step with each other.
-const SPEECH_RATE = 1.5;
+// Narration pace multiplier. Applied to real TTS audio via ElevenLabs' own voice_settings.speed
+// (not Web Audio playbackRate, which pitch-shifts the voice) — 1.2 is ElevenLabs' documented max
+// before quality degrades. Also drives the no-audio fallback pacing so both stay in step.
+const SPEECH_RATE = 1.2;
 
 // Fallback pacing when there's no real audio to time against (voice off, or TTS
 // unavailable/failed): approximates a comfortable narrated speaking pace so on-screen
@@ -27,7 +28,7 @@ async function fetchAudio(text: string): Promise<ArrayBuffer | null> {
       body: JSON.stringify({
         text,
         model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.5, similarity_boost: 0.8 },
+        voice_settings: { stability: 0.5, similarity_boost: 0.8, speed: SPEECH_RATE },
       }),
     });
     if (!res.ok) return null;
@@ -128,16 +129,17 @@ export function useVoice(onReveal: (text: string) => void) {
         ctx.decodeAudioData(
           buffer,
           (decoded) => {
+            // Speed is already baked into this audio via ElevenLabs' voice_settings.speed
+            // (see fetchAudio), so it plays at native pitch — no playbackRate adjustment here.
             const source = ctx.createBufferSource();
             source.buffer = decoded;
-            source.playbackRate.value = SPEECH_RATE;
             source.connect(ctx.destination);
             currentSourceRef.current = source;
             source.onended = () => {
               currentSourceRef.current = null;
             };
             source.start();
-            void revealOverTime(text, (decoded.duration / SPEECH_RATE) * 1000).then(resolve);
+            void revealOverTime(text, decoded.duration * 1000).then(resolve);
           },
           () => {
             // decode error: reveal immediately so the tour isn't stuck waiting
