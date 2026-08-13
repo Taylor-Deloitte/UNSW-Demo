@@ -4,7 +4,7 @@ import { AppShell } from '../components/AppShell';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'UNSW Online — Marketing Intelligence',
+  title: 'UNSW Online: Marketing Intelligence',
   description: 'Demo: agentic layer on top of AEP / AJO / Dynamics for lifelong learning',
 };
 

@@ -53,13 +53,13 @@ const SPOTLIGHT_TOOL: Tool = {
 const SIZE_AUDIENCE_TOOL: Tool = {
   name: 'size_audience',
   description:
-    'Query the real UNSW alumni database to size an audience by criteria. Returns a real matched count and sample profiles. Call this before quoting any audience size — never estimate one.',
+    'Query the real UNSW alumni database to size an audience by criteria. Returns a real matched count and sample profiles. Call this before quoting any audience size; never estimate one.',
   input_schema: {
     type: 'object' as const,
     properties: {
       audienceCriteria: {
         type: 'object' as const,
-        description: 'Filter criteria — omit a field to leave it unrestricted',
+        description: 'Filter criteria, omit a field to leave it unrestricted',
         properties: {
           industries: {
             type: 'array',
@@ -81,7 +81,7 @@ const SIZE_AUDIENCE_TOOL: Tool = {
       limit: {
         type: 'number',
         description:
-          'Max sample profiles to return (default 20) — audienceSize is always the full real count',
+          'Max sample profiles to return (default 20); audienceSize is always the full real count',
       },
     },
     required: ['audienceCriteria'],
@@ -111,7 +111,7 @@ const SCORE_PROPENSITY_TOOL: Tool = {
 const BUILD_SEGMENT_TOOL: Tool = {
   name: 'build_segment',
   description:
-    "Build a data-grounded, multi-variant campaign for a course. Call 'size_audience' and/or 'score_propensity' FIRST — every variant's eligiblePool must equal a real number already returned in this conversation, never an invented figure. Produce 2-3 variants spanning different strategies (e.g. a high-propensity variant scored via score_propensity, a broad-reach variant sized via size_audience alone, a re-engagement variant targeting a dormant or course-recency signal). After calling this, present the variants and ask the user which one to proceed with — do not call save_campaign_plan until they answer.",
+    "Build a data-grounded, multi-variant campaign for a course. Call 'size_audience' and/or 'score_propensity' FIRST: every variant's eligiblePool must equal a real number already returned in this conversation, never an invented figure. Produce 2-3 variants spanning different strategies (e.g. a high-propensity variant scored via score_propensity, a broad-reach variant sized via size_audience alone, a re-engagement variant targeting a dormant or course-recency signal). After calling this, present the variants and ask the user which one to proceed with; do not call save_campaign_plan until they answer.",
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -152,7 +152,7 @@ const BUILD_SEGMENT_TOOL: Tool = {
             eligiblePool: {
               type: 'number',
               description:
-                'Real matched count — must equal a number returned earlier by size_audience or score_propensity',
+                'Real matched count, must equal a number returned earlier by size_audience or score_propensity',
             },
             avgPropensityScore: {
               type: 'number',
@@ -162,7 +162,7 @@ const BUILD_SEGMENT_TOOL: Tool = {
             conversionAssumptionPct: {
               type: 'number',
               description:
-                'Assumed enrolment conversion rate as a percentage — justify it in dataSource',
+                'Assumed enrolment conversion rate as a percentage, justify it in dataSource',
             },
             estimatedEnrolments: {
               type: 'number',
@@ -171,7 +171,7 @@ const BUILD_SEGMENT_TOOL: Tool = {
             dataSource: {
               type: 'string',
               description:
-                'Which tool call(s) produced eligiblePool/avgPropensityScore — cite the literal criteria, e.g. "size_audience(industries=[Technology], hasRecentSignal=true) -> 214"',
+                'Which tool call(s) produced eligiblePool/avgPropensityScore: cite the literal criteria, e.g. "size_audience(industries=[Technology], hasRecentSignal=true) -> 214"',
             },
             confidence: {
               type: 'string',
@@ -208,7 +208,7 @@ const BUILD_SEGMENT_TOOL: Tool = {
 const SAVE_CAMPAIGN_PLAN_TOOL: Tool = {
   name: 'save_campaign_plan',
   description:
-    'Persist the campaign variant the user has just confirmed. Only call this AFTER the user has explicitly approved a specific variant from the most recent build_segment result — never in the same turn as build_segment, and never on an assumed or default variant.',
+    'Persist the campaign variant the user has just confirmed. Only call this AFTER the user has explicitly approved a specific variant from the most recent build_segment result; never in the same turn as build_segment, and never on an assumed or default variant.',
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -238,7 +238,7 @@ function executeTool(name: string, input: unknown, bundle: DataBundle, sessionId
       if (!payload) {
         return {
           ok: false,
-          error: 'No campaign has been built yet this session — call build_segment first.',
+          error: 'No campaign has been built yet this session; call build_segment first.',
         };
       }
       const { confirmedVariantIndex } = input as { confirmedVariantIndex?: number };
@@ -264,35 +264,35 @@ function executeTool(name: string, input: unknown, bundle: DataBundle, sessionId
 
 const CAMPAIGN_SYSTEM_PROMPT = `You are the Campaign Planner assistant embedded in UNSW Online's Course Intelligence tool.
 
-Your job is to help a marketer design a data-grounded campaign for a specific course — one careful step at a time, like a strategist collecting a brief before acting, never a tool that fires on a vague request.
+Your job is to help a marketer design a data-grounded campaign for a specific course, one careful step at a time, like a strategist collecting a brief before acting, never a tool that fires on a vague request.
 
 You have four tools available:
 
-1. 'size_audience' — queries the real alumni database by criteria (industry, seniority, state, recent career signal) and returns a real matched count. Call this before quoting any audience size.
+1. 'size_audience': queries the real alumni database by criteria (industry, seniority, state, recent career signal) and returns a real matched count. Call this before quoting any audience size.
 
-2. 'score_propensity' — scores real alumni propensity to enrol in a specific course, optionally restricted to alumniId values from a prior size_audience result. Call this before quoting any conversion or enrolment estimate.
+2. 'score_propensity': scores real alumni propensity to enrol in a specific course, optionally restricted to alumniId values from a prior size_audience result. Call this before quoting any conversion or enrolment estimate.
 
-3. 'build_segment' — call once you know the course and the objective, and have grounded at least one variant in a real size_audience/score_propensity number. Produces 2-3 variants spanning different strategies, each with an honest confidence level.
+3. 'build_segment': call once you know the course and the objective, and have grounded at least one variant in a real size_audience/score_propensity number. Produces 2-3 variants spanning different strategies, each with an honest confidence level.
 
-4. 'save_campaign_plan' — call ONLY after the user has explicitly said which variant to proceed with. Never call this in the same turn as build_segment — present the variants first and wait for their reply.
+4. 'save_campaign_plan': call ONLY after the user has explicitly said which variant to proceed with. Never call this in the same turn as build_segment; present the variants first and wait for their reply.
 
 Conversation discipline:
 - If the course name or the objective is missing or ambiguous, ask a clarifying question before calling any tool. Do not guess.
-- Ground every number in a real tool result — never invent an eligiblePool, propensity score, or conversion rate.
+- Ground every number in a real tool result; never invent an eligiblePool, propensity score, or conversion rate.
 - After build_segment, summarise the variants and explicitly ask which one to proceed with (or whether to adjust anything). Do not call save_campaign_plan until they answer.
 - Keep responses concise. Use **bold** for key numbers and course names.`;
 
-const BRIEF_SYSTEM_PROMPT = `You are guiding a live demo of UNSW Online's alumni engagement tool. You are talking to a CMO or strategy lead — sharp, time-poor, interested in the story behind the numbers.
+const BRIEF_SYSTEM_PROMPT = `You are guiding a live demo of UNSW Online's alumni engagement tool. You are talking to a CMO or strategy lead: sharp, time-poor, interested in the story behind the numbers.
 
 You have three tools:
-1. 'spotlight' — call BEFORE narrating each section. Targets: signalsFeed, cohortsChart, segmentsResult, ciRecommendations.
-2. 'size_audience' — queries the real alumni database. Call before quoting any audience size.
-3. 'score_propensity' — scores alumni propensity for a specific course.
+1. 'spotlight': call BEFORE narrating each section. Targets: signalsFeed, cohortsChart, segmentsResult, ciRecommendations.
+2. 'size_audience': queries the real alumni database. Call before quoting any audience size.
+3. 'score_propensity': scores alumni propensity for a specific course.
 
 Style rules (non-negotiable):
 - Spotlight first, then speak.
-- Lead with the number or the finding — not with what the tab "does".
-- 2–3 sentences per step. No more.
+- Lead with the number or the finding, not what the tab "does".
+- 2-3 sentences per step. No more.
 - Conversational, not a slide read-out. Talk like you're pointing at a screen, not presenting a deck.
 - Use **bold** for key numbers and course names.
 - Never say "this tab shows" or "here you can see". Just say the thing.`;

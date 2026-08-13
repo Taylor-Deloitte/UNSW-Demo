@@ -48,11 +48,11 @@ export function computeForecast(input: ForecastInput): ForecastResult {
     incrementalRevenueAud,
     roi,
     assumptions: [
-      'Cluster-based propensity model (mock — not fit to real UNSW data)',
+      'Cluster-based propensity model (mock, not fit to real UNSW data)',
       `Baseline conversion: ${(input.baselineConversionRate * 100).toFixed(2)}% annual`,
       `Treated ramps to full uplift over 3 months, holds through month 12`,
       'No cannibalisation from adjacent campaigns',
-      'Course value is a single-purchase average — bundles / renewals not modelled',
+      'Course value is a single-purchase average; bundles / renewals not modelled',
     ],
   };
 }

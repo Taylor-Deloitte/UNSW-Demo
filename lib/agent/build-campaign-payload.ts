@@ -104,7 +104,7 @@ export function buildCampaignPayload(input: BuildSegmentInput, bundle: DataBundl
         typecode: 1,
         statuscode: 0,
         prospectscountbase: recommended?.eligiblePool ?? 0,
-        subject: `${input.courseName} — a course matched to your career trajectory`,
+        subject: `${input.courseName}: a course matched to your career trajectory`,
         customFields: {
           unsw_source: 'marketing-intelligence-agent',
           unsw_governed_by: 'UNSW policy v1.2',
@@ -114,7 +114,7 @@ export function buildCampaignPayload(input: BuildSegmentInput, bundle: DataBundl
           unsw_created_at: now,
           unsw_idempotency_key: idempotencyKey,
         },
-        note: 'Dynamics is the lead master — AEP will sync via the CRM→AEP connector after review.',
+        note: 'Dynamics is the lead master; AEP will sync via the CRM→AEP connector after review.',
       },
     },
     aepSegment: {

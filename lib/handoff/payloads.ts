@@ -62,7 +62,7 @@ export function buildAepPayload(input: SegmentsHandoffInput) {
       evaluationInfo: {
         continuous: { enabled: true },
       },
-      mergePolicyId: '<merge policy — Alumni Master v2>',
+      mergePolicyId: '<merge policy: Alumni Master v2>',
       tags: ['unsw-online', 'lifelong-learning', labelFor('study', q.study).toLowerCase()],
       metadata: {
         createdBy: 'Marketing Intelligence agent · MI 0.1',
@@ -80,7 +80,7 @@ export function buildAjoPayload(input: SegmentsHandoffInput) {
   const q = input.query;
   const subject =
     q.signal === 'promoted'
-      ? `Congrats on the new role — one skill worth a fresh look`
+      ? `Congrats on the new role: one skill worth a fresh look`
       : q.signal === 'redundancy'
         ? `Between roles? Skills for what's next`
         : `Something new since your last course?`;
@@ -108,7 +108,7 @@ export function buildAjoPayload(input: SegmentsHandoffInput) {
       content: {
         subject,
         preheader: 'A short check-in about your next step.',
-        body: `Hi {{profile.firstName}},\n\nWe noticed {{profile.recentSignal}} — congrats. Alumni in your situation have found the AI for Leaders certificate a good next step. It's 8 weeks, mostly online. Want the outline?\n\n— UNSW Online`,
+        body: `Hi {{profile.firstName}},\n\nWe noticed {{profile.recentSignal}}, congrats. Alumni in your situation have found the AI for Leaders certificate a good next step. It's 8 weeks, mostly online. Want the outline?\n\nUNSW Online`,
         cta: {
           label: 'Show me the outline',
           url: 'https://online.unsw.edu.au/ai-for-leaders?utm_campaign=agent-drafted',
@@ -163,10 +163,10 @@ export function buildForecastBriefPayload(input: ForecastHandoffInput) {
       paybackMonth: input.paybackMonth,
     },
     assumptions: [
-      'Cluster-based propensity model (mock — not fit to real UNSW data)',
+      'Cluster-based propensity model (mock, not fit to real UNSW data)',
       'Treated arm ramps to full uplift over 3 months, holds through M+12',
       'No cannibalisation from adjacent campaigns',
-      'Course value is single-purchase average — bundles and renewals not modelled',
+      'Course value is single-purchase average; bundles and renewals not modelled',
     ],
     nextSteps: [
       'Create the AEP segment (Save to AEP)',
@@ -239,7 +239,7 @@ export function buildLookalikesPayload(input: LookalikesHandoffInput) {
     },
     body: {
       name: `UNSW Online · ${labelFor('study', q.study)} · lookalikes`,
-      description: `Lookalike expansion from ${input.seedAudienceSize} seed alumni — ${labelFor('signal', q.signal)} in ${labelFor('window', q.window)}`,
+      description: `Lookalike expansion from ${input.seedAudienceSize} seed alumni, ${labelFor('signal', q.signal)} in ${labelFor('window', q.window)}`,
       seedSegment: {
         estimatedSize: input.seedAudienceSize,
         pql: buildPql(q),
@@ -285,18 +285,18 @@ export function buildCrmCampaignPayload(input: CourseIntelligenceHandoffInput) {
     endpoint: 'https://api.dynamics.com/v9.2/campaigns',
     method: 'POST',
     headers: {
-      Authorization: '<bearer token from Azure AD — fetched at runtime by the CRM connector>',
+      Authorization: '<bearer token from Azure AD, fetched at runtime by the CRM connector>',
       'Content-Type': 'application/json',
       'OData-MaxVersion': '4.0',
       'OData-Version': '4.0',
     },
     body: {
       name: `UNSW Online · ${input.topCourseCode} · ${input.cohortLabel}`,
-      description: `Agent-drafted campaign — top opportunity from Course Intelligence. ${input.matchedAlumni.toLocaleString()} matched alumni with historical purchase signals.`,
+      description: `Agent-drafted campaign: top opportunity from Course Intelligence. ${input.matchedAlumni.toLocaleString()} matched alumni with historical purchase signals.`,
       typecode: 1,
       statuscode: 0,
       prospectscountbase: input.matchedAlumni,
-      subject: `${input.topCourseName} — right course, right moment for your career`,
+      subject: `${input.topCourseName}: right course, right moment for your career`,
       customFields: {
         unsw_source: 'marketing-intelligence-agent',
         unsw_governed_by: 'UNSW policy v1.2',
@@ -307,7 +307,7 @@ export function buildCrmCampaignPayload(input: CourseIntelligenceHandoffInput) {
         unsw_idempotency_key: fauxId('crm'),
       },
       meta: {
-        note: 'Dynamics is the lead master — AEP will be populated from Dynamics via the CRM→AEP integration.',
+        note: 'Dynamics is the lead master; AEP will be populated from Dynamics via the CRM→AEP integration.',
         nextStep: 'Review in Dynamics, assign journey, then sync to AJO via the CRM-AEP connector.',
       },
     },

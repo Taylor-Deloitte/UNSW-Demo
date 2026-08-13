@@ -84,7 +84,7 @@ function PayloadModal({
               {title}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 6 }}>
-              This is the raw payload that would post to the target system. Nothing was sent — this
+              This is the raw payload that would post to the target system. Nothing was sent; this
               is a preview only.
             </div>
           </div>

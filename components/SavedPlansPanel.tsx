@@ -82,7 +82,7 @@ export function SavedPlansPanel({ plans }: { plans: CoursePlanRecord[] }) {
               <div>
                 <span className="text-muted">Est. revenue </span>
                 <span style={{ fontWeight: 700 }}>
-                  {plan.estimatedRevenueAud !== null ? AUD.format(plan.estimatedRevenueAud) : '—'}
+                  {plan.estimatedRevenueAud !== null ? AUD.format(plan.estimatedRevenueAud) : 'N/A'}
                 </span>
               </div>
             </div>

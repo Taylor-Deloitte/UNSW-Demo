@@ -24,24 +24,30 @@ async function fetchAudio(text: string): Promise<ArrayBuffer | null> {
   }
 }
 
-export function useVoice() {
+export function useVoice(onReveal: (text: string) => void) {
   const [enabled, setEnabled] = useState(false);
   const enabledRef = useRef(enabled);
   useEffect(() => {
     enabledRef.current = enabled;
   }, [enabled]);
 
+  const onRevealRef = useRef(onReveal);
+  useEffect(() => {
+    onRevealRef.current = onReveal;
+  }, [onReveal]);
+
   const toggle = useCallback(() => setEnabled((v) => !v), []);
 
   // Audio playback state
   const audioCtxRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const revealIntervalRef = useRef<number | null>(null);
 
   // Queue: text chunks waiting to be fetched + played
   const queueRef = useRef<string[]>([]);
   const drainingRef = useRef(false);
 
-  // Incomplete sentence buffer — accumulates deltas until a boundary is hit
+  // Incomplete sentence buffer: accumulates deltas until a boundary is hit
   const bufferRef = useRef('');
 
   const getCtx = useCallback((): AudioContext => {
@@ -55,8 +61,52 @@ export function useVoice() {
     return audioCtxRef.current;
   }, []);
 
+  const clearRevealInterval = useCallback(() => {
+    if (revealIntervalRef.current !== null) {
+      window.clearInterval(revealIntervalRef.current);
+      revealIntervalRef.current = null;
+    }
+  }, []);
+
+  // Reveals `text` on screen progressively over `durationMs`, so the on-screen
+  // copy finishes appearing right as the narrated audio for it finishes playing.
+  const revealOverTime = useCallback(
+    (text: string, durationMs: number): Promise<void> =>
+      new Promise((resolve) => {
+        const total = text.length;
+        if (total === 0 || durationMs <= 0) {
+          onRevealRef.current(text);
+          resolve();
+          return;
+        }
+        const start = Date.now();
+        let revealed = 0;
+        clearRevealInterval();
+        revealIntervalRef.current = window.setInterval(() => {
+          if (!enabledRef.current) {
+            clearRevealInterval();
+            if (revealed < total) onRevealRef.current(text.slice(revealed));
+            resolve();
+            return;
+          }
+          const elapsed = Date.now() - start;
+          const targetChars = Math.min(total, Math.ceil((elapsed / durationMs) * total));
+          if (targetChars > revealed) {
+            onRevealRef.current(text.slice(revealed, targetChars));
+            revealed = targetChars;
+          }
+          if (elapsed >= durationMs || revealed >= total) {
+            clearRevealInterval();
+            if (revealed < total) onRevealRef.current(text.slice(revealed));
+            resolve();
+          }
+        }, 40);
+      }),
+    [clearRevealInterval],
+  );
+
   const playBuffer = useCallback(
-    (buffer: ArrayBuffer): Promise<void> =>
+    (buffer: ArrayBuffer, text: string): Promise<void> =>
       new Promise((resolve) => {
         const ctx = getCtx();
         ctx.decodeAudioData(
@@ -68,42 +118,62 @@ export function useVoice() {
             currentSourceRef.current = source;
             source.onended = () => {
               currentSourceRef.current = null;
-              resolve();
             };
             source.start();
+            void revealOverTime(text, decoded.duration * 1000).then(resolve);
           },
-          () => resolve(), // decode error — skip silently
+          () => {
+            // decode error: reveal immediately so the tour isn't stuck waiting
+            onRevealRef.current(text);
+            resolve();
+          },
         );
       }),
-    [getCtx],
+    [getCtx, revealOverTime],
   );
 
-  // Serial queue drain — fetch and play one chunk at a time in order
+  // Serial queue drain: fetch and play one chunk at a time in order
   const drain = useCallback(async () => {
     if (drainingRef.current) return;
     drainingRef.current = true;
     while (queueRef.current.length > 0) {
       const text = queueRef.current.shift()!;
-      if (!enabledRef.current) break; // voice toggled off mid-stream
+      if (!enabledRef.current) {
+        onRevealRef.current(text);
+        continue;
+      }
       const buf = await fetchAudio(text);
-      if (buf && enabledRef.current) await playBuffer(buf);
+      if (buf && enabledRef.current) {
+        await playBuffer(buf, text);
+      } else {
+        // TTS unavailable: reveal text immediately as a fallback
+        onRevealRef.current(text);
+      }
     }
     drainingRef.current = false;
   }, [playBuffer]);
 
   const enqueue = useCallback(
     (text: string) => {
-      if (!enabledRef.current || !text.trim()) return;
+      if (!text.trim()) return;
+      if (!enabledRef.current) {
+        onRevealRef.current(text);
+        return;
+      }
       queueRef.current.push(text);
       void drain();
     },
     [drain],
   );
 
-  // Called with each text delta from Claude — flushes on sentence boundaries
+  // Called with each text delta from Claude: reveals immediately if voice is off,
+  // otherwise buffers on sentence boundaries so text and narration stay paced together
   const onDelta = useCallback(
     (delta: string) => {
-      if (!enabledRef.current) return;
+      if (!enabledRef.current) {
+        onRevealRef.current(delta);
+        return;
+      }
       bufferRef.current += delta;
 
       // Find earliest sentence-ending boundary followed by whitespace
@@ -132,14 +202,15 @@ export function useVoice() {
     if (remaining.length > 3) enqueue(remaining);
   }, [enqueue]);
 
-  // Stop everything — called when a new conversation starts
+  // Stop everything: called when a new conversation starts
   const stop = useCallback(() => {
     queueRef.current = [];
     bufferRef.current = '';
     drainingRef.current = false;
     currentSourceRef.current?.stop();
     currentSourceRef.current = null;
-  }, []);
+    clearRevealInterval();
+  }, [clearRevealInterval]);
 
   return { enabled, toggle, onDelta, flush, stop };
 }

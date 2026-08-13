@@ -52,7 +52,7 @@ export function createUnswMcpServer(bundle: DataBundle, sessionId: string) {
       ),
       tool(
         'query_linkedin',
-        'Look up LinkedIn-style career signals — by alumni ID, or across all alumni for a given signal type.',
+        'Look up LinkedIn-style career signals, by alumni ID, or across all alumni for a given signal type.',
         {
           mode: z.enum(['by_alumni', 'by_signal_type']),
           alumniId: z.string().optional(),

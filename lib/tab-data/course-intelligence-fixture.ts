@@ -61,11 +61,11 @@ const SIGNAL_COUNTS: Record<Cohort, number> = {
 };
 
 const TOP_COURSE_BY_COHORT: Record<Cohort, string> = {
-  cs: 'AI for Leaders is the standout — 3.2× above baseline conversion for this cohort.',
-  eng: 'Data Strategy is the strongest match — engineering grads transitioning to leadership show 2.9× above baseline.',
+  cs: 'AI for Leaders is the standout: 3.2× above baseline conversion for this cohort.',
+  eng: 'Data Strategy is the strongest match: engineering grads transitioning to leadership show 2.9× above baseline.',
   commerce:
-    'Financial Modelling is the top pick — commerce grads in new senior roles show the highest historical match.',
-  all: 'AI for Leaders leads across all cohorts — 2.8× above baseline conversion for career-transition signals.',
+    'Financial Modelling is the top pick: commerce grads in new senior roles show the highest historical match.',
+  all: 'AI for Leaders leads across all cohorts: 2.8× above baseline conversion for career-transition signals.',
 };
 
 const CS_RECS: CourseRecommendation[] = [
@@ -228,7 +228,7 @@ const COMMERCE_RECS: CourseRecommendation[] = [
     opportunityScore: 0.37,
     badge: null,
     rationale:
-      'AI adoption in commercial roles is accelerating — currently underpenetrated in this cohort.',
+      'AI adoption in commercial roles is accelerating, currently underpenetrated in this cohort.',
   },
 ];
 
@@ -252,7 +252,7 @@ const ALL_RECS: CourseRecommendation[] = [
     historicalConversionPct: 0.055,
     opportunityScore: 0.76,
     badge: 'trending',
-    rationale: 'Strong signal across all fields — data fluency is a universal leadership skill.',
+    rationale: 'Strong signal across all fields: data fluency is a universal leadership skill.',
   },
   {
     rank: 3,
@@ -306,7 +306,7 @@ const CATALOGUE_GAPS: CatalogueGap[] = [
 const MARKET_TRENDS: MarketTrend[] = [
   {
     id: 'mt-1',
-    text: 'AI adoption in enterprise is accelerating — AI for Leaders demand expected to grow 35% in H2.',
+    text: 'AI adoption in enterprise is accelerating; AI for Leaders demand expected to grow 35% in H2.',
   },
   {
     id: 'mt-2',
@@ -318,7 +318,7 @@ const MARKET_TRENDS: MarketTrend[] = [
   },
   {
     id: 'mt-4',
-    text: 'Micro-credential preference rising among career changers — shorter formats outperforming 16-week courses.',
+    text: 'Micro-credential preference rising among career changers; shorter formats outperforming 16-week courses.',
   },
 ];
 
@@ -361,7 +361,7 @@ export function getCourseIntelligence(
         id: 4,
         label: 'Identifying catalogue gaps',
         detail:
-          'Checking signal volume against existing course catalogue — found 2 gaps with meaningful cohort sizes',
+          'Checking signal volume against existing course catalogue, found 2 gaps with meaningful cohort sizes',
       },
     ],
     recommendations: RECS_BY_COHORT[cohort],

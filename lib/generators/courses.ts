@@ -174,7 +174,7 @@ export function generateCourses(rng: Rng, count: number): Course[] {
     courses.push({
       id: `prog-${String(i + 1).padStart(6, '0')}`,
       code: `${template.code}-${intake}`,
-      name: `${template.name} — Intake ${intake}`,
+      name: `${template.name} (Intake ${intake})`,
       faculty: template.faculty,
       fieldOfStudy: template.fieldOfStudy,
       deliveryMode: faker.helpers.weightedArrayElement([

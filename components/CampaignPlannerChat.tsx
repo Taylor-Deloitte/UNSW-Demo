@@ -91,7 +91,7 @@ export function CampaignPlannerChat({
       >
         {messages.length === 0 && (
           <div className="text-muted" style={{ fontSize: 13, fontStyle: 'italic' }}>
-            Tell me which course to promote and what you&apos;re trying to achieve — I&apos;ll size
+            Tell me which course to promote and what you&apos;re trying to achieve, and I&apos;ll size
             the audience, score propensity, and draft campaign variants grounded in real data.
           </div>
         )}

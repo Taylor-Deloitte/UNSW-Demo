@@ -154,7 +154,7 @@ function buildAbTestPayload(a: CohortRow, b: CohortRow, q: CohortsQuery) {
     },
     body: {
       name: `${a.label} · cadence A/B`,
-      hypothesis: `Reverting the cadence template for ${a.label} recovers engagement lost after 12 June — target: return to ${b.engagement}%+ within 60 days.`,
+      hypothesis: `Reverting the cadence template for ${a.label} recovers engagement lost after 12 June, target: return to ${b.engagement}%+ within 60 days.`,
       variant_a: { label: 'Control (current template)', trafficShare: 0.5 },
       variant_b: { label: 'Reverted template (pre-12-June)', trafficShare: 0.5 },
       audience: { cohort: a.label, size: a.size },

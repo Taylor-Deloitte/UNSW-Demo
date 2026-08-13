@@ -55,7 +55,7 @@ export function generateCohorts(
     },
     {
       id: 'mid_career',
-      label: 'Mid-Career (Senior — Manager)',
+      label: 'Mid-Career (Senior/Manager)',
       commentary:
         'Engagement in mid-career dipped 22% after cadence changed on 12 June. Recommend reverting the new template or A/B-testing against control.',
     },

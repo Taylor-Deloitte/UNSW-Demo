@@ -345,7 +345,7 @@ function ResultTable({ rows }: { rows: SegmentSampleRow[] }) {
                 className="text-muted"
                 style={{ padding: '14px 36px', borderBottom: '1px solid #ededed' }}
               >
-                No alumni in the sample match this query — widen a condition above.
+                No alumni in the sample match this query. Widen a condition above.
               </td>
             </tr>
           )}

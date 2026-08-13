@@ -78,10 +78,10 @@ export const COHORTS_WINDOW_OPTIONS = [
 
 export function cohortFinding(a: CohortRow, b: CohortRow): string {
   if (a.key === 'mid-career') {
-    return `${a.label} engagement fell after the email cadence changed on 12 June — the drop maps cleanly to the same week the new template shipped. ${b.label}, on the same cadence, is flat to slightly up, so the change is not universal. Reverting the template or A/B testing it against control is the fastest path to recovering the ~${Math.abs(a.deltaQ1)}% we've lost.`;
+    return `${a.label} engagement fell after the email cadence changed on 12 June, the drop maps cleanly to the same week the new template shipped. ${b.label}, on the same cadence, is flat to slightly up, so the change is not universal. Reverting the template or A/B testing it against control is the fastest path to recovering the ~${Math.abs(a.deltaQ1)}% we've lost.`;
   }
   if (a.deltaQ1 < 0) {
-    return `${a.label} engagement is down ${Math.abs(a.deltaQ1)}% over the window, while ${b.label} is at ${b.engagement}%. The gap widened in the last quarter — worth investigating whether recent campaigns are landing differently across the two cohorts.`;
+    return `${a.label} engagement is down ${Math.abs(a.deltaQ1)}% over the window, while ${b.label} is at ${b.engagement}%. The gap widened in the last quarter; worth investigating whether recent campaigns are landing differently across the two cohorts.`;
   }
   return `${a.label} engagement is holding at ${a.engagement}%, up ${a.deltaQ1}% from Q1. Continue current cadence; consider testing whether ${b.label}'s pattern generalises.`;
 }
