@@ -65,9 +65,12 @@ export function ChatOverlay() {
   }, [pathname]);
 
   // Queued through voice.enqueueAction so tab navigation happens in step with
-  // narration instead of racing ahead of it (see hooks/useVoice.ts).
+  // narration instead of racing ahead of it (see hooks/useVoice.ts). Flushes the
+  // previous tab's buffered narration first, so it's sent to TTS as one bulk chunk
+  // (not per-sentence) before the next tab's navigation is queued behind it.
   const onSpotlight = useCallback(
     (target: string, tag: string) => {
+      voice.flush();
       voice.enqueueAction(async () => {
         if (isPresenterWidgetId(target)) {
           const owningRoute = PRESENTER_WIDGET_ROUTES[target];

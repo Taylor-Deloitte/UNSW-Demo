@@ -23,7 +23,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const bundle = await getDataBundle();
   const sessionIdForTools = resumeSessionId ?? `pending-${Date.now()}`;
-  setSession(sessionIdForTools, {});
+  await setSession(sessionIdForTools, {});
   const mcpServer = createUnswMcpServer(bundle, sessionIdForTools);
 
   const encoder = new TextEncoder();

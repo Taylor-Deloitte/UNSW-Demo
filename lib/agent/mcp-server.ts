@@ -84,7 +84,7 @@ export function createUnswMcpServer(bundle: DataBundle, sessionId: string) {
           criteriaSummary: z.string(),
         },
         async (input) => {
-          const result = createAepSegment({ ...input, sessionId });
+          const result = await createAepSegment({ ...input, sessionId });
           return { content: [{ type: 'text', text: JSON.stringify(result) }] };
         },
       ),
@@ -98,7 +98,7 @@ export function createUnswMcpServer(bundle: DataBundle, sessionId: string) {
           bodyPreview: z.string().optional(),
         },
         async (input) => {
-          const result = draftAjoCampaign({ ...input, sessionId });
+          const result = await draftAjoCampaign({ ...input, sessionId });
           return { content: [{ type: 'text', text: JSON.stringify(result) }] };
         },
       ),

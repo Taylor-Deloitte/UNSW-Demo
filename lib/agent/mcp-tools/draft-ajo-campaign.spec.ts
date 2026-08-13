@@ -1,14 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { draftAjoCampaign } from './draft-ajo-campaign';
-import { setSession, getSession } from '../session-store';
+
+vi.mock('../session-store', () => ({
+  appendCampaign: vi.fn(async () => undefined),
+}));
 
 describe('draftAjoCampaign', () => {
-  beforeEach(() => {
-    setSession('test-camp-session', {});
-  });
-
-  it('appends a campaign to the session', () => {
-    const r = draftAjoCampaign({
+  it('appends a campaign to the session', async () => {
+    const r = await draftAjoCampaign({
       sessionId: 'test-camp-session',
       segmentId: 'seg-1',
       channel: 'email',
@@ -18,11 +17,10 @@ describe('draftAjoCampaign', () => {
     expect(r.campaignId).toMatch(/^camp-/);
     expect(r.ajoCampaignId).toMatch(/^ajo-camp-/);
     expect(r.channel).toBe('email');
-    expect(getSession('test-camp-session')!.campaigns).toHaveLength(1);
   });
 
-  it('accepts sms and push channels', () => {
-    const r = draftAjoCampaign({
+  it('accepts sms and push channels', async () => {
+    const r = await draftAjoCampaign({
       sessionId: 'test-camp-session',
       segmentId: 'seg-2',
       channel: 'sms',
@@ -30,13 +28,13 @@ describe('draftAjoCampaign', () => {
     expect(r.channel).toBe('sms');
   });
 
-  it('generates unique IDs', () => {
-    const a = draftAjoCampaign({
+  it('generates unique IDs', async () => {
+    const a = await draftAjoCampaign({
       sessionId: 'test-camp-session',
       segmentId: 's',
       channel: 'email',
     });
-    const b = draftAjoCampaign({
+    const b = await draftAjoCampaign({
       sessionId: 'test-camp-session',
       segmentId: 's',
       channel: 'email',

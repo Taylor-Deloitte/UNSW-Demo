@@ -20,11 +20,13 @@ export interface DraftAjoCampaignOutput {
 
 let counter = 0;
 
-export function draftAjoCampaign(input: DraftAjoCampaignInput): DraftAjoCampaignOutput {
+export async function draftAjoCampaign(
+  input: DraftAjoCampaignInput,
+): Promise<DraftAjoCampaignOutput> {
   counter++;
   const id = `camp-${Date.now()}-${counter}`;
   const ajoId = `ajo-camp-${String(counter).padStart(6, '0')}`;
-  appendCampaign(input.sessionId, {
+  await appendCampaign(input.sessionId, {
     id,
     segmentId: input.segmentId,
     channel: input.channel,

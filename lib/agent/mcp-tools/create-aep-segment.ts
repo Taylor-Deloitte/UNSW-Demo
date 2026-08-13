@@ -17,11 +17,13 @@ export interface CreateAepSegmentOutput {
 
 let counter = 0;
 
-export function createAepSegment(input: CreateAepSegmentInput): CreateAepSegmentOutput {
+export async function createAepSegment(
+  input: CreateAepSegmentInput,
+): Promise<CreateAepSegmentOutput> {
   counter++;
   const id = `seg-${Date.now()}-${counter}`;
   const aepId = `aep-seg-${String(counter).padStart(6, '0')}`;
-  appendSegment(input.sessionId, {
+  await appendSegment(input.sessionId, {
     id,
     name: input.name,
     size: input.audienceSize,

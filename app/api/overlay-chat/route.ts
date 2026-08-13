@@ -14,18 +14,13 @@ import {
   type BuildSegmentInput,
 } from '../../../lib/agent/build-campaign-payload';
 import { setSession, appendCoursePlan } from '../../../lib/agent/session-store';
+import { getChatHistory, saveChatHistory, getCampaignDraft, saveCampaignDraft } from '../../../lib/db';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 type ChatMode = 'campaign' | 'brief';
 
-// In-memory multi-turn history per session+mode (single Railway instance is fine for demo).
-// Campaign and Brief are independent personas/conversations even for the same sessionId.
-const sessions = new Map<string, MessageParam[]>();
-
-// Last campaign payload built per session, so save_campaign_plan persists exactly what
-// the model already showed the user rather than re-deriving (and possibly drifting).
-const lastBuiltPayload = new Map<string, ReturnType<typeof buildCampaignPayload>>();
+type CampaignPayload = ReturnType<typeof buildCampaignPayload>;
 
 let planCounter = 0;
 
@@ -222,7 +217,12 @@ const SAVE_CAMPAIGN_PLAN_TOOL: Tool = {
   },
 };
 
-function executeTool(name: string, input: unknown, bundle: DataBundle, sessionId: string): unknown {
+async function executeTool(
+  name: string,
+  input: unknown,
+  bundle: DataBundle,
+  sessionId: string,
+): Promise<unknown> {
   switch (name) {
     case 'size_audience':
       return queryAep(bundle, input as QueryAepInput);
@@ -230,11 +230,11 @@ function executeTool(name: string, input: unknown, bundle: DataBundle, sessionId
       return runPropensityModel(bundle, input as RunPropensityModelInput);
     case 'build_segment': {
       const payload = buildCampaignPayload(input as BuildSegmentInput, bundle);
-      lastBuiltPayload.set(sessionId, payload);
+      await saveCampaignDraft(sessionId, payload);
       return payload;
     }
     case 'save_campaign_plan': {
-      const payload = lastBuiltPayload.get(sessionId);
+      const payload = await getCampaignDraft<CampaignPayload>(sessionId);
       if (!payload) {
         return {
           ok: false,
@@ -250,7 +250,7 @@ function executeTool(name: string, input: unknown, bundle: DataBundle, sessionId
         planCounter++;
         const id = `plan-${Date.now()}-${planCounter}`;
         const plan = { id, ...record };
-        appendCoursePlan(sessionId, plan);
+        await appendCoursePlan(sessionId, plan);
         return { ok: true, plan };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -325,11 +325,10 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
   }
 
-  setSession(sessionId, {});
+  await setSession(sessionId, {});
 
   const bundle = await getDataBundle();
-  const historyKey = `${sessionId}:${mode}`;
-  const history = sessions.get(historyKey) ?? [];
+  const history = (await getChatHistory<MessageParam>(sessionId, mode)) ?? [];
   const messages: MessageParam[] = [...history, { role: 'user', content: prompt }];
 
   const encoder = new TextEncoder();
@@ -411,10 +410,12 @@ export async function POST(req: Request): Promise<Response> {
             const toolUseBlocks = finalMessage.content.filter(
               (b): b is ToolUseBlock => b.type === 'tool_use',
             );
-            const toolExecutions = toolUseBlocks.map((block) => ({
-              block,
-              result: executeTool(block.name, block.input, bundle, sessionId),
-            }));
+            const toolExecutions = await Promise.all(
+              toolUseBlocks.map(async (block) => ({
+                block,
+                result: await executeTool(block.name, block.input, bundle, sessionId),
+              })),
+            );
 
             for (const { block, result } of toolExecutions) {
               if (block.name === 'save_campaign_plan') {
@@ -439,7 +440,7 @@ export async function POST(req: Request): Promise<Response> {
         }
 
         // Persist history (cap at 40 to avoid unbounded growth)
-        sessions.set(historyKey, messages.slice(-40));
+        await saveChatHistory(sessionId, mode, messages.slice(-40));
         send(sse('done', {}));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

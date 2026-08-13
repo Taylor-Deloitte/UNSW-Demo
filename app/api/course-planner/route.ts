@@ -15,7 +15,7 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   try {
-    const session = getSession(sessionId);
+    const session = await getSession(sessionId);
     return NextResponse.json({ plans: session?.coursePlans ?? [] });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

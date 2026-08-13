@@ -5,6 +5,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const VOICE_ID = process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID ?? '';
 const API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY ?? '';
 
+// Fallback pacing when there's no real audio to time against (voice off, or TTS
+// unavailable/failed): approximates a comfortable narrated speaking pace so on-screen
+// text and tab navigation still stay in step with each other instead of flashing by.
+function estimateReadingDurationMs(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const msPerWord = 340; // ~176 wpm
+  return Math.min(20000, Math.max(700, words * msPerWord));
+}
+
 async function fetchAudio(text: string): Promise<ArrayBuffer | null> {
   if (!VOICE_ID || !API_KEY || !text.trim()) return null;
   try {
@@ -74,7 +83,7 @@ export function useVoice(onReveal: (text: string) => void) {
   // Reveals `text` on screen progressively over `durationMs`, so the on-screen
   // copy finishes appearing right as the narrated audio for it finishes playing.
   const revealOverTime = useCallback(
-    (text: string, durationMs: number): Promise<void> =>
+    (text: string, durationMs: number, bailIfDisabled = true): Promise<void> =>
       new Promise((resolve) => {
         const total = text.length;
         if (total === 0 || durationMs <= 0) {
@@ -86,7 +95,7 @@ export function useVoice(onReveal: (text: string) => void) {
         let revealed = 0;
         clearRevealInterval();
         revealIntervalRef.current = window.setInterval(() => {
-          if (!enabledRef.current) {
+          if (bailIfDisabled && !enabledRef.current) {
             clearRevealInterval();
             if (revealed < total) onRevealRef.current(text.slice(revealed));
             resolve();
@@ -135,8 +144,10 @@ export function useVoice(onReveal: (text: string) => void) {
     [getCtx, revealOverTime],
   );
 
-  // Serial queue drain: fetch and play one chunk at a time in order, running any
-  // interleaved actions (e.g. tab navigation) exactly when their turn comes up
+  // Serial queue drain: play (or pace) one chunk at a time in order, running any
+  // interleaved actions (e.g. tab navigation) exactly when their turn comes up.
+  // Always runs through this same loop regardless of the voice toggle, so text and
+  // navigation stay in step with each other whether or not real audio is playing.
   const drain = useCallback(async () => {
     if (drainingRef.current) return;
     drainingRef.current = true;
@@ -147,28 +158,23 @@ export function useVoice(onReveal: (text: string) => void) {
         continue;
       }
       const { text } = item;
-      if (!enabledRef.current) {
-        onRevealRef.current(text);
-        continue;
+      if (enabledRef.current) {
+        const buf = await fetchAudio(text);
+        if (buf && enabledRef.current) {
+          await playBuffer(buf, text);
+          continue;
+        }
       }
-      const buf = await fetchAudio(text);
-      if (buf && enabledRef.current) {
-        await playBuffer(buf, text);
-      } else {
-        // TTS unavailable: reveal text immediately as a fallback
-        onRevealRef.current(text);
-      }
+      // Voice off, or TTS unavailable/failed: pace the reveal at an estimated
+      // reading speed instead of revealing (and navigating) instantly.
+      await revealOverTime(text, estimateReadingDurationMs(text), false);
     }
     drainingRef.current = false;
-  }, [playBuffer]);
+  }, [playBuffer, revealOverTime]);
 
   const enqueue = useCallback(
     (text: string) => {
       if (!text.trim()) return;
-      if (!enabledRef.current) {
-        onRevealRef.current(text);
-        return;
-      }
       queueRef.current.push({ kind: 'text', text });
       void drain();
     },
@@ -176,50 +182,26 @@ export function useVoice(onReveal: (text: string) => void) {
   );
 
   // Queues an action (e.g. presenter spotlight/navigation) to run in its turn,
-  // in step with narration. Runs immediately when voice is off, matching the
-  // instant reveal used for text in that mode.
+  // in step with narration, whether or not voice is enabled.
   const enqueueAction = useCallback(
     (run: () => void | Promise<void>) => {
-      if (!enabledRef.current) {
-        void run();
-        return;
-      }
       queueRef.current.push({ kind: 'action', run });
       void drain();
     },
     [drain],
   );
 
-  // Called with each text delta from Claude: reveals immediately if voice is off,
-  // otherwise buffers on sentence boundaries so text and narration stay paced together
-  const onDelta = useCallback(
-    (delta: string) => {
-      if (!enabledRef.current) {
-        onRevealRef.current(delta);
-        return;
-      }
-      bufferRef.current += delta;
+  // Called with each text delta from Claude: just accumulates. The whole buffered
+  // block (a tab's full narration) is sent to TTS as one chunk via flush(), so
+  // ElevenLabs' own speech pacing for that chunk drives the on-screen reveal rate,
+  // rather than fetching/playing per-sentence fragments.
+  const onDelta = useCallback((delta: string) => {
+    bufferRef.current += delta;
+  }, []);
 
-      // Find earliest sentence-ending boundary followed by whitespace
-      const buf = bufferRef.current;
-      let boundary = -1;
-      for (const sep of ['. ', '! ', '? ', '\n\n', '\n']) {
-        const idx = buf.indexOf(sep);
-        if (idx !== -1 && (boundary === -1 || idx < boundary)) {
-          boundary = idx + sep.length - 1;
-        }
-      }
-
-      if (boundary > 0) {
-        const sentence = buf.slice(0, boundary + 1).trim();
-        bufferRef.current = buf.slice(boundary + 1).trimStart();
-        if (sentence.length > 3) enqueue(sentence);
-      }
-    },
-    [enqueue],
-  );
-
-  // Flush remaining buffer when streaming ends
+  // Flush the buffered block (one tab's worth of narration) as a single queued
+  // unit. Called both at each spotlight boundary (previous tab's text) and once
+  // more when streaming ends (the final tab's trailing text).
   const flush = useCallback(() => {
     const remaining = bufferRef.current.trim();
     bufferRef.current = '';
